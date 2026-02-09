@@ -1,7 +1,7 @@
 # Requirements: Project Cornerstone v1.1
 
 **Defined:** 2026-02-09
-**Core Value:** Any FLS team member can ask a business question in plain English and get an accurate, formatted answer from their ERP data — without touching Control's UI or knowing SQL.
+**Core Value:** Any FLS team member can ask a business question in plain English and get an accurate, formatted answer from their ERP data -- without touching Control's UI or knowing SQL.
 
 ## v1.1 Requirements
 
@@ -34,7 +34,7 @@ Requirements for read-layer domain expansion. Each maps to roadmap phases.
 
 ### Reports Catalog
 
-- [ ] **RPT-01**: Crystal Report catalog — what exists, parameters, when to use vs. custom query (36 reports mapped to user intents, integrated into glossary routing)
+- [ ] **RPT-01**: Crystal Report catalog -- what exists, parameters, when to use vs. custom query (36 reports mapped to user intents, integrated into glossary routing)
 
 ## Validation Standard
 
@@ -65,41 +65,39 @@ Explicitly excluded. Documented to prevent scope creep.
 
 | Feature | Reason |
 |---------|--------|
-| Write operations (any domain) | Milestone 3 scope — all writes through CHAPI |
+| Write operations (any domain) | Milestone 3 scope -- all writes through CHAPI |
 | Division-level reporting | Future nice-to-have, not core to read-layer completeness |
 | HR/Payroll queries | Lower priority, not actively queried by team |
 | Sales forecasting / dashboards | Analytics layer deferred until query foundation complete |
 | Bank reconciliation | Write operation (matching transactions), not read-only |
 | GL journal entry creation | Write operation |
-| Inventory adjustments | Write operation — CHAPI only |
+| Inventory adjustments | Write operation -- CHAPI only |
 | Real-time production monitoring | Point-in-time queries only, no streaming |
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FIN-04 | TBD | Pending |
-| FIN-05 | TBD | Pending |
-| FIN-06 | TBD | Pending |
-| FIN-07 | TBD | Pending |
-| CUST-01 | TBD | Pending |
-| CUST-02 | TBD | Pending |
-| CUST-03 | TBD | Pending |
-| INV-01 | TBD | Pending |
-| INV-02 | TBD | Pending |
-| INV-03 | TBD | Pending |
-| PROD-01 | TBD | Pending |
-| PROD-02 | TBD | Pending |
-| PROD-03 | TBD | Pending |
-| RPT-01 | TBD | Pending |
+| FIN-04 | Phase 9 | Pending |
+| FIN-05 | Phase 9 | Pending |
+| FIN-06 | Phase 9 | Pending |
+| FIN-07 | Phase 9 | Pending |
+| CUST-01 | Phase 10 | Pending |
+| CUST-02 | Phase 10 | Pending |
+| CUST-03 | Phase 10 | Pending |
+| INV-01 | Phase 11 | Pending |
+| INV-02 | Phase 11 | Pending |
+| INV-03 | Phase 11 | Pending |
+| PROD-01 | Phase 12 | Pending |
+| PROD-02 | Phase 12 | Pending |
+| PROD-03 | Phase 12 | Pending |
+| RPT-01 | Phase 13 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 14 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 14
+- Mapped to phases: 14
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-09 after initial definition*
+*Last updated: 2026-02-09 after roadmap creation*
