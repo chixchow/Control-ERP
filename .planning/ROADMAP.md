@@ -56,7 +56,11 @@ START ----+                            +---> Phase 11 (Inventory) ---> Phase 12 
   3. User can ask for P&L with product-line breakdown (revenue, COGS, gross margin by category) for any date range
   4. User can ask "what's our bank balance" or "show me cash flow" and get current balances plus cash in/out summary
   5. All financial queries use GL view (not Ledger table), correct sign conventions (SUM(-Amount) for revenue), and SaleDate for AR aging (not DueDate)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 09-01-PLAN.md -- AR detail with customer breakdown + AP detail with vendor breakdown
+- [ ] 09-02-PLAN.md -- P&L analysis with comparison periods + cash flow and bank balance queries
 
 **Critical pitfalls:**
 - GL sign convention inversion: Revenue stored as negative credits. Must use SUM(-Amount) for GLClassificationType IN (4000, 4001).
@@ -143,7 +147,7 @@ Phases execute in numeric order with parallelization: 9+10 (parallel) -> 11 -> 1
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 9. Financial Depth | v1.1 | 0/TBD | Not started | - |
+| 9. Financial Depth | v1.1 | 0/2 | Planned | - |
 | 10. Customer Intelligence | v1.1 | 0/TBD | Not started | - |
 | 11. Inventory Management | v1.1 | 0/TBD | Not started | - |
 | 12. Production Workflow | v1.1 | 0/TBD | Not started | - |
