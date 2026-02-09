@@ -16,15 +16,15 @@ Requirements for read-layer domain expansion. Each maps to roadmap phases.
 
 ### Customer Intelligence
 
-- [ ] **CUST-01**: Customer lookup, contact info, account status queries (search by name, view contacts, addresses, phone numbers, account flags)
-- [ ] **CUST-02**: Customer segmentation and CLV analysis (revenue ranking, order frequency, average order value, lifetime value calculation)
-- [ ] **CUST-03**: Churn detection (customers inactive > N days, last order date, revenue at risk)
+- [x] **CUST-01**: Customer lookup, contact info, account status queries (search by name, view contacts, addresses, phone numbers, account flags)
+- [x] **CUST-02**: Customer segmentation and CLV analysis (revenue ranking, order frequency, average order value, lifetime value calculation)
+- [x] **CUST-03**: Churn detection (customers inactive > N days, last order date, revenue at risk)
 
 ### Inventory Management
 
-- [ ] **INV-01**: Parts and stock level queries (current quantities, parts by category, low stock identification)
-- [ ] **INV-02**: Reorder point monitoring and alerts (parts below reorder threshold, suggested reorder quantities)
-- [ ] **INV-03**: Warehouse and material planning queries (warehouse inventory, material consumption rates, usage history)
+- [x] **INV-01**: Parts and stock level queries (current quantities, parts by category, low stock identification)
+- [x] **INV-02**: Reorder point monitoring and alerts (parts below reorder threshold, suggested reorder quantities)
+- [x] **INV-03**: Warehouse and material planning queries (warehouse inventory, material consumption rates, usage history)
 
 ### Production Workflow
 
