@@ -13,7 +13,7 @@ Milestone 1 formalizes and validates the substantial existing work on the Contro
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Core Skill Verification** - Verify control-erp-core skill completeness and structure the knowledge log
-- [ ] **Phase 2: Schema Infrastructure** - Validate schema docs, FK mappings, domain classification, and ClassTypeID reference
+- [x] **Phase 2: Schema Infrastructure** - Validate schema docs, FK mappings, domain classification, and ClassTypeID reference
 - [x] **Phase 3: Wiki Knowledge Formalization** - Formalize wiki crawl outputs into organized, skill-consumable references
 - [ ] **Phase 4: Sales Skill Verification** - Verify control-erp-sales skill and document all product identification patterns
 - [ ] **Phase 5: Financial Foundation** - Document GL/Ledger architecture, system accounts, and payment logic in the financial skill
@@ -63,8 +63,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Verify schema completeness (10 tables spot-checked) and FK relationship completeness against live database
-- [ ] 02-02-PLAN.md — Fix domain classification table count, compile standalone ClassTypeID reference (350+ entries)
+- [x] 02-01-PLAN.md — Verify schema completeness (10 tables spot-checked) and FK relationship completeness against live database
+- [x] 02-02-PLAN.md — Fix domain classification table count, compile standalone ClassTypeID reference (350+ entries)
 
 ### Phase 3: Wiki Knowledge Formalization
 **Goal**: Wiki crawl outputs are verified complete and formalized into organized references that downstream skills and documentation can consume
@@ -166,7 +166,7 @@ Wave 1 (parallel): 1, 2, 3 -> Wave 2 (parallel): 4, 5 -> Wave 3 (parallel): 6, 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Core Skill Verification | 1/1 | Complete | 2026-02-08 |
-| 2. Schema Infrastructure | 0/2 | Not started | - |
+| 2. Schema Infrastructure | 2/2 | Complete | 2026-02-08 |
 | 3. Wiki Knowledge Formalization | 2/2 | Complete | 2026-02-08 |
 | 4. Sales Skill Verification | 0/2 | Not started | - |
 | 5. Financial Foundation | 0/2 | Not started | - |

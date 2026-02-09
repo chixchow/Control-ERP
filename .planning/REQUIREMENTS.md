@@ -11,10 +11,10 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 
 - [x] **CORE-01**: control-erp-core skill complete with validated TransactionType mappings, StatusID reference, pricing logic, and standard query filters
 - [x] **CORE-02**: Knowledge log captured in structured format — every validated discovery documented with date, query, and finding
-- [ ] **CORE-03**: Schema documentation complete for all 187+ tables with columns, types, nullable flags, and row counts
-- [ ] **CORE-04**: FK relationships mapped (explicit from sys.foreign_keys + inferred from naming patterns)
-- [ ] **CORE-05**: Domain classification complete — tables grouped into functional domains with descriptions
-- [ ] **CORE-06**: ClassTypeID reference compiled from wiki extracts (350+ entries) into skill-consumable format
+- [x] **CORE-03**: Schema documentation complete for all 187+ tables with columns, types, nullable flags, and row counts
+- [x] **CORE-04**: FK relationships mapped (explicit from sys.foreign_keys + inferred from naming patterns)
+- [x] **CORE-05**: Domain classification complete — tables grouped into functional domains with descriptions
+- [x] **CORE-06**: ClassTypeID reference compiled from wiki extracts (350+ entries) into skill-consumable format
 
 ### Sales Intelligence
 
@@ -126,10 +126,10 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 |-------------|-------|--------|
 | CORE-01 | Phase 1: Core Skill Verification | Complete |
 | CORE-02 | Phase 1: Core Skill Verification | Complete |
-| CORE-03 | Phase 2: Schema Infrastructure | Pending |
-| CORE-04 | Phase 2: Schema Infrastructure | Pending |
-| CORE-05 | Phase 2: Schema Infrastructure | Pending |
-| CORE-06 | Phase 2: Schema Infrastructure | Pending |
+| CORE-03 | Phase 2: Schema Infrastructure | Complete |
+| CORE-04 | Phase 2: Schema Infrastructure | Complete |
+| CORE-05 | Phase 2: Schema Infrastructure | Complete |
+| CORE-06 | Phase 2: Schema Infrastructure | Complete |
 | SALES-01 | Phase 4: Sales Skill Verification | Pending |
 | SALES-02 | Phase 4: Sales Skill Verification | Pending |
 | SALES-03 | Phase 4: Sales Skill Verification | Pending |
