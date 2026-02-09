@@ -92,11 +92,11 @@ Plans:
   3. Product category revenue breakdown validated against Control "Sales by Product" report -- DyeSub Print = $1,793K (58.7%)
   4. Customer revenue queries (top customers, CLV basics) return results consistent with Control reports
   5. Sales trend queries (monthly, quarterly, YoY) return internally consistent totals that sum to annual figures
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 04-01: Review sales skill product architecture and identification patterns
-- [ ] 04-02: Validate product revenue, customer revenue, and trend queries against Control
+- [ ] 04-01-PLAN.md — Audit product architecture documentation (SALES-01, -02, -03), verify pattern overlaps, investigate "Other" bucket
+- [ ] 04-02-PLAN.md — Validate product revenue, customer revenue, and trend queries (SALES-04, -05, -06) with formal verification report
 
 ### Phase 5: Financial Foundation
 **Goal**: GL/Ledger architecture, system account NodeIDs, and payment GL offset logic are documented in the financial skill with enough detail that financial queries in Milestone 2 have a solid foundation
