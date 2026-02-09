@@ -71,6 +71,30 @@ For full schema, see `output/schemas/Ledger.md`.
 - **Asset accounts:** Positive = increase (debit), negative = decrease (credit)
 - **Liability accounts:** Negative = increase (credit), positive = decrease (debit)
 
+### Off-Balance Sheet Entries
+
+Ledger entries with `OffBalanceSheet = 1` are excluded from the GL view. These track costs for parts that were expensed at purchase (not carried as inventory assets).
+
+**Why they exist:** Control supports two part cost tracking modes:
+
+- **Accrual (financial):** Parts are inventory assets until consumed. Uses NodeID 10414 (Inventory). Appears in GL view. Standard financial reporting approach.
+- **Cost Accounting (non-financial):** Parts are expensed at purchase. Uses NodeIDs 60/61 (Unclassified Inventory/Expense). Off-balance sheet to prevent double-counting since parts were already expensed when purchased.
+
+**When to include them:** Only when analyzing total production costs including non-accrual materials. For standard financial reporting, the GL view correctly excludes them.
+
+**Count context:** ~307K off-balance sheet entries vs ~2.44M on-balance sheet entries (~11% of all Ledger entries).
+
+**Query example — Total cost including off-balance sheet entries for an order:**
+```sql
+SELECT
+    CASE l.OffBalanceSheet WHEN 0 THEN 'Financial (GL)' ELSE 'Cost Accounting (OBS)' END AS EntryType,
+    SUM(l.Amount) AS TotalCost
+FROM Ledger l
+WHERE l.TransHeaderID = @TransHeaderID
+    AND l.GLAccountID IN (10414, 34, 60, 61)  -- inventory/cost accounts
+GROUP BY l.OffBalanceSheet
+```
+
 ---
 
 ## GLACCOUNT — CHART OF ACCOUNTS
@@ -263,6 +287,43 @@ Credit Orders Due (NodeID 21)   $order_total
 ```
 Debit  Undeposited MCVisa (92) or Undeposited Cash (91) or Undeposited Checks (93)   $payment
 Credit Order Prepayments (NodeID 24)                                                 $payment
+```
+
+### Built Status — Cost Flow (Stage 2.5)
+
+When an order is marked Built (StatusID 2), costs are transferred from WIP to a Built intermediary account before the order is sold. This stage holds finished goods inventory.
+
+**GL entries when order marked Built:**
+```
+-- Transfer from WIP to Built
+Credit WIP (11)                       $order_total
+Debit  Built (12)                     $order_total
+
+-- Cost tracking (accrual-tracked parts)
+Credit Inventory (10414)              $accrual_cost
+Debit  Cost Of Built - FGI (34)       $accrual_cost
+
+-- Cost tracking (non-accrual parts, OFF-BALANCE SHEET)
+Credit Unclassified Inventory (60)    $nonaccrual_cost   [OffBalanceSheet=1]
+Debit  Unclassified Expense (61)      $nonaccrual_cost   [OffBalanceSheet=1]
+```
+
+**Key points:**
+- Built status is an intermediate hold between production and sale
+- NodeID 34 (Cost Of Built - FGI = Finished Goods Inventory) holds costs until the order is sold
+- At sale, NodeID 34 clears as costs move to COGS (Cost of Goods Sold)
+- Non-accrual parts use off-balance sheet tracking (OffBalanceSheet=1 in Ledger) to avoid double-counting parts that were expensed at purchase
+- Not all orders go through Built status — some go directly from WIP to Sale
+
+**Query to analyze Built cost entries:**
+```sql
+SELECT TOP 10 l.GLAccountID, ga.AccountName, l.Amount, l.OffBalanceSheet, l.Description
+FROM Ledger l
+INNER JOIN GLAccount ga ON l.GLAccountID = ga.ID
+INNER JOIN Journal j ON l.JournalID = j.ID
+WHERE j.ActivityType = 6  -- Marked Built
+  AND l.GLAccountID IN (11, 12, 34, 60, 61, 10414)
+ORDER BY l.ID DESC
 ```
 
 **Stage 3a: Sale — Prepaid Order** (payment received before sale)
@@ -715,6 +776,11 @@ Gross margin ~82% in recent periods.
 | "WIP balance" / "orders in production value" | Balance Sheet → NodeID 11 |
 | "How did [customer] pay?" / "payment history" | GL register query on Order Prepayments or AR |
 | "GL entries for order #NNNNN" | Ledger WHERE TransHeaderID = (order's ID) |
+| "undeposited payments" / "pending deposits" | Undeposited payments query (Payment.Undeposited = 1) |
+| "deposit history" / "bank deposits" | Deposit workflow query (Ledger.DepositJournalID) |
+| "payment method breakdown" | Group payments by TenderType |
+| "closeout status" / "period locks" | Closeout query by type |
+| "production costs for order" / "total cost including materials" | Ledger query with OffBalanceSheet included |
 
 ### Two Revenue Reporting Approaches
 
