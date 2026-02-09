@@ -151,12 +151,12 @@ Plans:
   3. Business process documentation covers the order lifecycle (estimate -> order -> production -> shipping -> invoice) with table references at each stage
   4. Crystal Reports catalog lists which reports exist, their parameters, and guidance on when to use them vs. custom queries
   5. Known gotchas and validation methodology documented -- a future maintainer reading these would avoid the IsActive/TransDetailParam trap, TotalPrice vs SubTotalPrice trap, and SaleDate vs OrderCreatedDate trap
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 08-01: Document skill architecture, query patterns, and business processes
-- [ ] 08-02: Document Crystal Reports catalog, gotchas, and validation methodology
-- [ ] 08-03: Cross-check all 35 requirements and close milestone
+- [ ] 08-01-PLAN.md — Create skill architecture document (DOC-01 + DOC-03) and query pattern reference (DOC-02)
+- [ ] 08-02-PLAN.md — Create Crystal Reports catalog (DOC-04) and known gotchas document (DOC-05)
+- [ ] 08-03-PLAN.md — Create validation methodology (DOC-06), cross-check 35 requirements, close milestone
 
 ## Progress
 
