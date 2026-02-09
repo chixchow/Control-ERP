@@ -2,120 +2,47 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-08)
+See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** Any FLS team member can ask a business question in plain English and get an accurate, formatted answer from their ERP data.
-**Current focus:** Milestone 1 COMPLETE -- All 8 phases done, 35/35 requirements PASS
+**Current focus:** Planning next milestone (v1.1 Read-Layer Build-Out)
 
 ## Current Position
 
-Phase: 8 of 8 (Documentation & Milestone Close -- Wave 4)
-Plan: 3 of 3 in current phase
-Status: MILESTONE 1 COMPLETE
-Last activity: 2026-02-09 -- Completed 08-03-PLAN.md (Validation Methodology + Milestone Close)
+Phase: 8 of 8 completed (v1.0 milestone)
+Plan: N/A — milestone complete
+Status: Ready for next milestone
+Last activity: 2026-02-09 — v1.0 milestone archived and tagged
 
-Progress: [██████████] 100%
+Progress: [██████████] 100% (v1.0)
 
 ## Performance Metrics
 
-**Velocity:**
+**v1.0 Velocity:**
 - Total plans completed: 15
 - Average duration: 4min11s
 - Total execution time: 1.04 hours
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 01 | 1 | 2min43s | 2min43s |
-| 02 | 2 | 8min26s | 4min13s |
-| 03 | 2 | 11min27s | 5min44s |
-| 04 | 2 | 7min2s | 3min31s |
-| 05 | 2 | 5min37s | 2min49s |
-| 06 | 1 | 8min46s | 8min46s |
-| 07 | 2 | 6min56s | 3min28s |
-| 08 | 3 | 13min23s | 4min28s |
-
-**Recent Trend:**
-- Last 5 plans: 3min11s, 3min45s, 4min7s, 5min16s, 4min0s
-- Trend: Validation tasks 3-4min; glossary/synthesis 8-9min; documentation tasks 4-5min
-
-*Updated after each plan completion*
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- [Roadmap v2]: Eliminated standalone audit phase -- audit checks folded into actual work phases
-- [Roadmap v2]: 8-phase structure with 4-wave parallelism (3+2+2+1) -- max throughput with 5 concurrent agents
-- [Roadmap v2]: All SALES-* requirements consolidated into Phase 4 (was split across Phases 5 and 8)
-- [Roadmap v2]: DOC-* and milestone close merged into single Phase 8 (was Phases 9+10)
-- [01-01]: Type 7 StatusID 28 means Closed not Open - corrected in core skill
-- [01-01]: Types 3, 4, 10 documented from wiki despite zero FLS records for completeness
-- [01-01]: StatusID 3 standardized to "Sale" singular throughout all documents
-- [01-01]: Revenue queries require explicit SaleDate IS NOT NULL filter
-- [03-01]: All 12 extracts verified as GOOD quality (exceeds 6 required) - second extraction pass identified high-value domains
-- [03-02]: Sales Report uses GL view as primary source (not TransHeader) - discrepancy between wiki docs and inferred analysis flagged
-- [02-01]: Internal consistency verification used instead of live DB queries - Mac environment cannot connect to Windows MCP server
-- [02-01]: 187 schema files and 89 FK relationships verified for internal consistency - optional database verification recommended from Windows environment
-- [02-02]: Standalone ClassTypeID reference created instead of embedding in field_values.md - 350+ entries too large for mixed-content file
-- [02-02]: ClassTypeID reference organized by ID range categories mirroring Control's architectural design intent
-- [05-01]: Use exact GLAccount.AccountName from database, not wiki aliases - source of truth for account names
-- [05-01]: EntryType values marked MEDIUM confidence - inferred from Description patterns, not official docs
-- [04-01]: Added Caveat #6 documenting Control Report vs Query Grouping discrepancy - DyeLux/Garment variance explained
-- [04-01]: Pattern overlap analysis confirms Template 8 CASE order prevents double-counting between DyeSub and Description patterns
-- [04-01]: "Other Products/Services" bucket ($256K, 8.4%) assessed as acceptable catch-all category
-- [04-02]: Cross-reference verification used for query validation due to Mac MCP constraint - all 9 sales templates verified against phase2-test-results.md
-- [04-02]: Internal consistency checks confirm DyeSub categories sum to total, product groups sum to detail total, monthly sum matches annual within $4
-- [05-02]: Deposit workflow documented as two-step process (Payment -> Undeposited, Deposit -> Cash-Checking via DepositJournalID)
-- [05-02]: ACH (TenderType 5) and Wire (7) post directly to Cash-Checking, bypassing undeposited step
-- [05-02]: Payment queries should filter to ClassTypeID IN (20001, 20009) for standard order and bill payments
-- [05-02]: Built status documented as Stage 2.5 with FGI cost flow through NodeID 34 (Cost Of Built - FGI)
-- [05-02]: Off-balance sheet entries explained as cost accounting mode for parts expensed at purchase (~307K entries, 11% of Ledger)
-- [06-01]: Comprehensive coverage prioritized over line count target (491 lines vs 250-350 target) to include all required terminology
-- [06-01]: "Blanket" added as standalone non-DyeSub entry despite not being in original 6 groups (frequent user request pattern)
-- [06-01]: Glossary uses cross-reference pattern (points to owning skills) rather than duplicating query templates or business rules
-- [07-01]: Cross-reference validation method used for Tier 1-3 tests - validated against 2026-02-07 results rather than live re-execution (faster, already validated)
-- [07-01]: Revenue target note added explaining $3,053,541.85 (known income) vs $3,052,952.52 (query result) variance - both numbers documented for clarity
-- [07-01]: Internal consistency checks documented across all 11 tests proving data integrity (monthly sum = annual, categories = totals, etc.)
-- [07-02]: Gotcha validation format includes trap/wrong/correct/impact/skill-citation/status - proves skills prevent $1.3M+ errors through explicit warnings
-- [07-02]: Tier 7 behavioral assessment cites specific skill file lines/sections that prevent ambiguity and edge-case errors
-- [07-02]: Comprehensive scorecard summary (21 tests + totals + gate + requirements) provides standalone milestone artifact
-- [08-01]: Order lifecycle embedded in skill-architecture.md rather than standalone document - architecture + lifecycle naturally belong together
-- [08-01]: Query patterns organized by business question type (8 sections) not by table/domain - matches user intent
-- [08-01]: Web Orders added as separate section beyond 6 required - unique deduplication requirements warrant visibility
-- [08-02]: MCP unavailable for ReportMenuItem query - used existing report_summary.md, schemas, and wiki references as fallback data sources
-- [08-02]: Crystal Reports catalog explicitly notes .rpt SQL extraction deferred to Milestone 2
-- [08-03]: 35/35 requirements cross-checked with specific evidence file citations -- no rubber-stamping
-- [08-03]: Validation methodology documents actual Milestone 1 process (not theoretical) for reproducibility
+All v1.0 decisions archived in milestones/v1.0-ROADMAP.md.
 
 ### Pending Todos
 
-None -- Milestone 1 complete.
+None — ready for Milestone 2 planning.
 
 ### Blockers/Concerns
 
-- None -- Milestone 1 complete. Next: Milestone 2 planning.
+- None — ready for `/gsd:new-milestone`
 
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: MILESTONE 1 COMPLETE -- All 35/35 requirements verified PASS
+Stopped at: v1.0 milestone archived, ready for next milestone
 Resume file: None
 
-**Phase 1 Status:** Complete (1/1 plans done) -- Verified 2026-02-08 (gaps fixed by orchestrator)
-**Phase 2 Status:** Complete (2/2 plans done) -- Schema & FK verified, ClassTypeID reference compiled 2026-02-09
-**Phase 3 Status:** Complete (2/2 plans done) -- CHAPI, Crystal Reports, Macros formalized 2026-02-08
-**Phase 4 Status:** Complete (2/2 plans done) -- Sales skill verified 2026-02-09 (6/6 SALES requirements PASS)
-**Phase 5 Status:** Complete (2/2 plans done) -- Financial skill complete 2026-02-09
-**Phase 6 Status:** Complete (1/1 plans done) -- Glossary skill created 2026-02-09 (3/3 GLOSS requirements PASS)
-**Phase 7 Status:** Complete (2/2 plans done) -- Test suite complete 2026-02-09 (21/21 tests PASS, $1.3M+ error prevention)
-**Phase 8 Status:** Complete (3/3 plans done) -- DOC-01 through DOC-06 complete, 35/35 requirements verified 2026-02-09
-**Wave 1 Status:** Complete (3/3 phases done)
-**Wave 2 Status:** Complete (4/4 plans done, 2 phases complete)
-**Wave 3 Status:** Complete (3/3 plans done, 2 phases complete)
-**Wave 4 Status:** Complete (3/3 plans done, 1 phase complete)
-**Next up:** Milestone 2 planning
+**v1.0 Status:** SHIPPED (8 phases, 15 plans, 35/35 requirements)
+**Next up:** `/gsd:new-milestone` to define Milestone 2 scope and requirements
