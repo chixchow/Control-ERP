@@ -16,8 +16,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Schema Infrastructure** - Validate schema docs, FK mappings, domain classification, and ClassTypeID reference
 - [x] **Phase 3: Wiki Knowledge Formalization** - Formalize wiki crawl outputs into organized, skill-consumable references
 - [x] **Phase 4: Sales Skill Verification** - Verify control-erp-sales skill and document all product identification patterns
-- [ ] **Phase 5: Financial Foundation** - Document GL/Ledger architecture, system accounts, and payment logic in the financial skill
-- [ ] **Phase 6: Glossary Skill Creation** - Build control-erp-glossary with FLS business language and Control technical terminology
+- [x] **Phase 5: Financial Foundation** - Document GL/Ledger architecture, system accounts, and payment logic in the financial skill
+- [x] **Phase 6: Glossary Skill Creation** - Build control-erp-glossary with FLS business language and Control technical terminology
 - [ ] **Phase 7: Test Suite Execution** - Execute all validation tests with formal scorecard proving accuracy against Control reports
 - [ ] **Phase 8: Documentation & Milestone Close** - Produce maintainability documentation and close the milestone
 
@@ -109,8 +109,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Verify NodeID names, add missing system accounts, Ledger field reference, and Closeout section
-- [ ] 05-02-PLAN.md — Add deposit workflow, TenderType/ClassTypeID references, and Built cost flow documentation
+- [x] 05-01-PLAN.md — Verify NodeID names, add missing system accounts, Ledger field reference, and Closeout section
+- [x] 05-02-PLAN.md — Add deposit workflow, TenderType/ClassTypeID references, and Built cost flow documentation
 
 ### Phase 6: Glossary Skill Creation
 **Goal**: A control-erp-glossary skill exists that maps FLS business language and Control-specific terminology to database entities and queries
@@ -123,7 +123,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 06-01-PLAN.md — Create glossary skill with FLS product terminology, Control technical terms, and natural language routing table
+- [x] 06-01-PLAN.md — Create glossary skill with FLS product terminology, Control technical terms, and natural language routing table
 
 ### Phase 7: Test Suite Execution
 **Goal**: All validation tests formally executed with a pass/fail scorecard proving that the skills produce accurate results against known Control report outputs
@@ -169,7 +169,7 @@ Wave 1 (parallel): 1, 2, 3 -> Wave 2 (parallel): 4, 5 -> Wave 3 (parallel): 6, 7
 | 2. Schema Infrastructure | 2/2 | Complete | 2026-02-08 |
 | 3. Wiki Knowledge Formalization | 2/2 | Complete | 2026-02-08 |
 | 4. Sales Skill Verification | 2/2 | Complete | 2026-02-08 |
-| 5. Financial Foundation | 0/2 | Not started | - |
-| 6. Glossary Skill Creation | 0/1 | Not started | - |
+| 5. Financial Foundation | 2/2 | Complete | 2026-02-09 |
+| 6. Glossary Skill Creation | 1/1 | Complete | 2026-02-09 |
 | 7. Test Suite Execution | 0/2 | Not started | - |
 | 8. Documentation & Milestone Close | 0/3 | Not started | - |

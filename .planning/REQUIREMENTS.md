@@ -27,9 +27,9 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 
 ### Financial Foundation
 
-- [ ] **FIN-01**: control-erp-financial skill started with GL/Ledger architecture, sign conventions, GLClassificationType reference
-- [ ] **FIN-02**: GL system account NodeIDs documented (11=WIP, 12=Built, 14=AR, 21=Orders Due, 24=Customer Deposits, 91=Undeposited Funds)
-- [ ] **FIN-03**: Payment GL offset logic documented (WIP/Built deposits vs Sale payments)
+- [x] **FIN-01**: control-erp-financial skill started with GL/Ledger architecture, sign conventions, GLClassificationType reference
+- [x] **FIN-02**: GL system account NodeIDs documented (11=WIP, 12=Built, 14=AR, 21=Orders Due, 24=Customer Deposits, 91=Undeposited Funds)
+- [x] **FIN-03**: Payment GL offset logic documented (WIP/Built deposits vs Sale payments)
 
 ### Wiki Knowledge Base
 
@@ -136,9 +136,9 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 | SALES-04 | Phase 4: Sales Skill Verification | Complete |
 | SALES-05 | Phase 4: Sales Skill Verification | Complete |
 | SALES-06 | Phase 4: Sales Skill Verification | Complete |
-| FIN-01 | Phase 5: Financial Foundation | Pending |
-| FIN-02 | Phase 5: Financial Foundation | Pending |
-| FIN-03 | Phase 5: Financial Foundation | Pending |
+| FIN-01 | Phase 5: Financial Foundation | Complete |
+| FIN-02 | Phase 5: Financial Foundation | Complete |
+| FIN-03 | Phase 5: Financial Foundation | Complete |
 | WIKI-01 | Phase 3: Wiki Knowledge Formalization | Complete |
 | WIKI-02 | Phase 3: Wiki Knowledge Formalization | Complete |
 | WIKI-03 | Phase 3: Wiki Knowledge Formalization | Complete |
