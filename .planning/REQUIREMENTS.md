@@ -124,47 +124,56 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-01 | Phase 1 | Pending |
-| CORE-02 | Phase 1 | Pending |
-| CORE-03 | Phase 1 | Pending |
-| CORE-04 | Phase 1 | Pending |
-| CORE-05 | Phase 1 | Pending |
-| CORE-06 | Phase 1 | Pending |
-| SALES-01 | Phase 2 | Pending |
-| SALES-02 | Phase 2 | Pending |
-| SALES-03 | Phase 2 | Pending |
-| SALES-04 | Phase 3 | Pending |
-| SALES-05 | Phase 3 | Pending |
-| SALES-06 | Phase 3 | Pending |
-| FIN-01 | Phase 2 | Pending |
-| FIN-02 | Phase 2 | Pending |
-| FIN-03 | Phase 2 | Pending |
-| WIKI-01 | Phase 1 | Pending |
-| WIKI-02 | Phase 1 | Pending |
-| WIKI-03 | Phase 1 | Pending |
-| WIKI-04 | Phase 1 | Pending |
-| WIKI-05 | Phase 1 | Pending |
-| GLOSS-01 | Phase 4 | Pending |
-| GLOSS-02 | Phase 4 | Pending |
-| GLOSS-03 | Phase 4 | Pending |
-| TEST-01 | Phase 3 | Pending |
-| TEST-02 | Phase 3 | Pending |
-| TEST-03 | Phase 3 | Pending |
-| TEST-04 | Phase 3 | Pending |
-| TEST-05 | Phase 3 | Pending |
-| TEST-06 | Phase 3 | Pending |
-| DOC-01 | Phase 5 | Pending |
-| DOC-02 | Phase 5 | Pending |
-| DOC-03 | Phase 5 | Pending |
-| DOC-04 | Phase 5 | Pending |
-| DOC-05 | Phase 5 | Pending |
-| DOC-06 | Phase 5 | Pending |
+| CORE-01 | Phase 1: Core Skill Verification | Pending |
+| CORE-02 | Phase 1: Core Skill Verification | Pending |
+| CORE-03 | Phase 2: Schema Infrastructure | Pending |
+| CORE-04 | Phase 2: Schema Infrastructure | Pending |
+| CORE-05 | Phase 2: Schema Infrastructure | Pending |
+| CORE-06 | Phase 2: Schema Infrastructure | Pending |
+| SALES-01 | Phase 4: Sales Skill Verification | Pending |
+| SALES-02 | Phase 4: Sales Skill Verification | Pending |
+| SALES-03 | Phase 4: Sales Skill Verification | Pending |
+| SALES-04 | Phase 4: Sales Skill Verification | Pending |
+| SALES-05 | Phase 4: Sales Skill Verification | Pending |
+| SALES-06 | Phase 4: Sales Skill Verification | Pending |
+| FIN-01 | Phase 5: Financial Foundation | Pending |
+| FIN-02 | Phase 5: Financial Foundation | Pending |
+| FIN-03 | Phase 5: Financial Foundation | Pending |
+| WIKI-01 | Phase 3: Wiki Knowledge Formalization | Pending |
+| WIKI-02 | Phase 3: Wiki Knowledge Formalization | Pending |
+| WIKI-03 | Phase 3: Wiki Knowledge Formalization | Pending |
+| WIKI-04 | Phase 3: Wiki Knowledge Formalization | Pending |
+| WIKI-05 | Phase 3: Wiki Knowledge Formalization | Pending |
+| GLOSS-01 | Phase 6: Glossary Skill Creation | Pending |
+| GLOSS-02 | Phase 6: Glossary Skill Creation | Pending |
+| GLOSS-03 | Phase 6: Glossary Skill Creation | Pending |
+| TEST-01 | Phase 7: Test Suite Execution | Pending |
+| TEST-02 | Phase 7: Test Suite Execution | Pending |
+| TEST-03 | Phase 7: Test Suite Execution | Pending |
+| TEST-04 | Phase 7: Test Suite Execution | Pending |
+| TEST-05 | Phase 7: Test Suite Execution | Pending |
+| TEST-06 | Phase 7: Test Suite Execution | Pending |
+| DOC-01 | Phase 8: Documentation & Milestone Close | Pending |
+| DOC-02 | Phase 8: Documentation & Milestone Close | Pending |
+| DOC-03 | Phase 8: Documentation & Milestone Close | Pending |
+| DOC-04 | Phase 8: Documentation & Milestone Close | Pending |
+| DOC-05 | Phase 8: Documentation & Milestone Close | Pending |
+| DOC-06 | Phase 8: Documentation & Milestone Close | Pending |
 
 **Coverage:**
-- v1 (Milestone 1) requirements: 30 total
-- Mapped to phases: 30
-- Unmapped: 0 ✓
+- v1 (Milestone 1) requirements: 35 total (7 categories)
+- Mapped to phases: 35
+- Unmapped: 0
+
+**By category:**
+- Core Foundation (6): Phase 1 (2), Phase 2 (4)
+- Sales Intelligence (6): Phase 4 (6)
+- Financial Foundation (3): Phase 5 (3)
+- Wiki Knowledge Base (5): Phase 3 (5)
+- Glossary (3): Phase 6 (3)
+- Test Suite & Validation (6): Phase 7 (6)
+- Documentation & Maintainability (6): Phase 8 (6)
 
 ---
 *Requirements defined: 2026-02-08*
-*Last updated: 2026-02-08 after initial definition*
+*Last updated: 2026-02-08 after roadmap v2 (8-phase structure with parallelism)*
