@@ -79,6 +79,11 @@ Plans:
   2. User can ask "who are our top customers" or "show customer segmentation" and get revenue ranking, order frequency, average order value, and lifetime value -- with results that cross-check against the validated sales skill top-10 output
   3. User can ask "which customers are at risk" or "who haven't ordered in 6 months" and get dormant customer detection with last order date and revenue at risk
   4. Customer revenue totals are internally consistent with core revenue baseline ($3,052,952.52)
+**Plans**: 2 plans
+
+Plans:
+- [ ] 10-01-PLAN.md -- Create customer skill with profile lookup, smart search, and drill-down queries (CUST-01)
+- [ ] 10-02-PLAN.md -- Add ranking, RFM segmentation, and churn detection with personalized dormancy (CUST-02, CUST-03)
 
 **Critical pitfalls:**
 - Account table uses CompanyName, NOT AccountName.
@@ -148,11 +153,11 @@ Phases execute in numeric order with parallelization: 9+10 (parallel) -> 11 -> 1
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 9. Financial Depth | v1.1 | 2/2 | Complete | 2026-02-09 |
-| 10. Customer Intelligence | v1.1 | 0/TBD | Not started | - |
+| 10. Customer Intelligence | v1.1 | 0/2 | Planned | - |
 | 11. Inventory Management | v1.1 | 0/TBD | Not started | - |
 | 12. Production Workflow | v1.1 | 0/TBD | Not started | - |
 | 13. Glossary Integration | v1.1 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-02-09 after Phase 9 completion*
+*Last updated: 2026-02-09 after Phase 10 planning*
