@@ -9,8 +9,8 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 
 ### Core Foundation
 
-- [ ] **CORE-01**: control-erp-core skill complete with validated TransactionType mappings, StatusID reference, pricing logic, and standard query filters
-- [ ] **CORE-02**: Knowledge log captured in structured format — every validated discovery documented with date, query, and finding
+- [x] **CORE-01**: control-erp-core skill complete with validated TransactionType mappings, StatusID reference, pricing logic, and standard query filters
+- [x] **CORE-02**: Knowledge log captured in structured format — every validated discovery documented with date, query, and finding
 - [ ] **CORE-03**: Schema documentation complete for all 187+ tables with columns, types, nullable flags, and row counts
 - [ ] **CORE-04**: FK relationships mapped (explicit from sys.foreign_keys + inferred from naming patterns)
 - [ ] **CORE-05**: Domain classification complete — tables grouped into functional domains with descriptions
@@ -124,8 +124,8 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-01 | Phase 1: Core Skill Verification | Pending |
-| CORE-02 | Phase 1: Core Skill Verification | Pending |
+| CORE-01 | Phase 1: Core Skill Verification | Complete |
+| CORE-02 | Phase 1: Core Skill Verification | Complete |
 | CORE-03 | Phase 2: Schema Infrastructure | Pending |
 | CORE-04 | Phase 2: Schema Infrastructure | Pending |
 | CORE-05 | Phase 2: Schema Infrastructure | Pending |

@@ -12,7 +12,7 @@ Milestone 1 formalizes and validates the substantial existing work on the Contro
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Core Skill Verification** - Verify control-erp-core skill completeness and structure the knowledge log
+- [x] **Phase 1: Core Skill Verification** - Verify control-erp-core skill completeness and structure the knowledge log
 - [ ] **Phase 2: Schema Infrastructure** - Validate schema docs, FK mappings, domain classification, and ClassTypeID reference
 - [ ] **Phase 3: Wiki Knowledge Formalization** - Formalize wiki crawl outputs into organized, skill-consumable references
 - [ ] **Phase 4: Sales Skill Verification** - Verify control-erp-sales skill and document all product identification patterns
@@ -49,7 +49,7 @@ START ----+---> Phase 2 (Schema) --+---> Phase 5 (Financial)+---> Phase 7 (Tests
 **Plans:** 1 plan
 
 Plans:
-- [ ] 01-01-PLAN.md — Resolve contradictions across truth sources, fill core skill gaps, structure knowledge log
+- [x] 01-01-PLAN.md — Resolve contradictions across truth sources, fill core skill gaps, structure knowledge log
 
 ### Phase 2: Schema Infrastructure
 **Goal**: Schema documentation, FK relationships, domain classification, and ClassTypeID reference are verified complete and consumable by downstream skills
@@ -165,7 +165,7 @@ Wave 1 (parallel): 1, 2, 3 -> Wave 2 (parallel): 4, 5 -> Wave 3 (parallel): 6, 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Core Skill Verification | 0/1 | Not started | - |
+| 1. Core Skill Verification | 1/1 | Complete | 2026-02-08 |
 | 2. Schema Infrastructure | 0/2 | Not started | - |
 | 3. Wiki Knowledge Formalization | 0/2 | Not started | - |
 | 4. Sales Skill Verification | 0/2 | Not started | - |
