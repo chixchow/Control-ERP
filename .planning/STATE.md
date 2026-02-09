@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 ## Current Position
 
-Phase: 10 of 13 (Customer Intelligence) -- COMPLETE
-Plan: 2 of 2 complete
-Status: Phase complete
-Last activity: 2026-02-09 -- Completed 10-02-PLAN.md (Customer Ranking, Segmentation, At-Risk Detection)
+Phase: 11 of 13 (Inventory Management) -- IN PROGRESS
+Plan: 1 of 2 complete
+Status: In progress
+Last activity: 2026-02-09 -- Completed 11-01-PLAN.md (Inventory Skill Foundation)
 
-Progress: [████░░░░░░] 40% (v1.1) -- 4 of 10 plans complete
+Progress: [█████░░░░░] 50% (v1.1) -- 5 of 10 plans complete
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [████░░░░░░] 40% (v1.1) -- 4 of 10 plans complete
 - Total execution time: 1.04 hours
 
 **v1.1 Velocity:**
-- Total plans completed: 4
-- Average duration: 3min57s
-- Total execution time: 0.27 hours
+- Total plans completed: 5
+- Average duration: 3min38s
+- Total execution time: 0.31 hours
 
 ## Accumulated Context
 
@@ -49,6 +49,9 @@ Recent decisions affecting current work:
 - Customer skill kept integrated at 1,073 lines (not extracted to references, below 1,200-line threshold)
 - Customer ranking/segmentation/at-risk completed in single comprehensive commit (more efficient than artificial separation)
 - RFM NTILE ordering: DESC for Recency, ASC for Frequency/Monetary (verifier caught inversion)
+- Two-tier confidence model for inventory: Primary (reliable PO data) vs Secondary (caveated inventory quantities)
+- Default to Warehouse 10 for inventory queries (has 98% of stock vs Apparel WH with 3 parts)
+- Progressive filtering for inventory: IsActive -> TrackInventory -> context-dependent qty filter
 
 ### Pending Todos
 
@@ -56,12 +59,13 @@ None.
 
 ### Blockers/Concerns
 
-- Phases 11-12 require MCP database access for FLS-specific discovery queries (warehouse configuration, station hierarchy, artwork status usage)
+- Phase 11: Warehouse configuration discovered (Warehouse 10 = default) -- blocker cleared
+- Phase 12: Station hierarchy and artwork status usage still require live database discovery
 
 ## Session Continuity
 
-Last session: 2026-02-09T18:50Z
-Stopped at: Completed 10-02-PLAN.md (Customer Ranking, Segmentation, At-Risk Detection) -- Phase 10 COMPLETE
+Last session: 2026-02-09T19:10Z
+Stopped at: Completed 11-01-PLAN.md (Inventory Skill Foundation) -- Phase 11 1/2 complete
 Resume file: None
 
 **v1.0 Status:** SHIPPED (8 phases, 15 plans, 35/35 requirements)
