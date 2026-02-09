@@ -150,7 +150,7 @@ These are the accounts referenced in GL transaction flows. Memorize these:
 | 90 | Cash-Associated Bank-Checking | Debit (asset) |
 | 92 | Undeposited MCVisa | Debit (asset) |
 | 10137 | Undeposited Amex | Debit (asset) |
-| 10412 | Cash-MM (Money Market) | Debit (asset) |
+| 10412 | Cash-Associated Bank-MM | Debit (asset) |
 | 10414 | Inventory | Debit (asset) |
 
 ### Supporting System Accounts
@@ -160,7 +160,7 @@ These accounts support the core GL lifecycle and appear in specific workflow sta
 | NodeID | Account | Classification | Purpose |
 |--------|---------|---------------|---------|
 | 15 | Direct Costs from Bills | 1002 (Current Asset) | Intermediary for bill costs assigned to orders |
-| 25 | Vendor Credit | 2000 (AP) | Vendor credit balances |
+| 25 | Vendor Credit | 1002 (Current Asset) | Vendor credit balances |
 | 34 | Cost Of Built - FGI | 1002 (Current Asset) | Holds costs during Built status before sale |
 | 52 | Credit Given | 5002 (Expense) | Customer credit adjustments expense |
 | 60 | Unclassified Inventory | 1003 (Inventory) | Off-balance sheet cost tracking for expensed parts |
@@ -589,6 +589,91 @@ ORDER BY ARBalance DESC
 - Customer terms: `Account.PaymentTermsID`
 - Order-level override: `TransHeader.POPaymentTermsID`
 
+### AR Detail with Customer Breakdown
+
+Matches Control's A_R Detail report format: customer breakdown with aging columns, WIP/Built orders shown separately (not mixed into aging buckets), charge account customers marked with asterisk (*).
+
+**AR ages from SaleDate (invoice date), NEVER DueDate.** DueDate on Type 1 orders is the production/shipping deadline, not the payment deadline. WIP/Built orders (SaleDate IS NULL) appear in a separate bucket because they have no invoice date to age from.
+
+#### Full AR Detail by Customer
+```sql
+-- AR Detail with customer breakdown and aging buckets
+-- Ages from SaleDate (NEVER DueDate). WIP/Built orders shown separately.
+SELECT
+    a.CompanyName,
+    CASE WHEN a.HasCreditAccount = 1 THEN '*' ELSE '' END AS CreditAcct,
+    pt.TermsName,
+    th.OrderNumber,
+    th.SaleDate,
+    th.Description,
+    th.TotalPrice AS InvoiceTotal,
+    th.BalanceDue,
+    CASE WHEN th.SaleDate IS NULL THEN 'WIP/Built' ELSE '' END AS WIPFlag,
+    -- Aging buckets (only for orders with SaleDate)
+    CASE WHEN th.SaleDate IS NOT NULL AND DATEDIFF(DAY, th.SaleDate, GETDATE()) <= 30
+         THEN th.BalanceDue ELSE 0 END AS Current_0_30,
+    CASE WHEN DATEDIFF(DAY, th.SaleDate, GETDATE()) BETWEEN 31 AND 60
+         THEN th.BalanceDue ELSE 0 END AS Days_31_60,
+    CASE WHEN DATEDIFF(DAY, th.SaleDate, GETDATE()) BETWEEN 61 AND 90
+         THEN th.BalanceDue ELSE 0 END AS Days_61_90,
+    CASE WHEN DATEDIFF(DAY, th.SaleDate, GETDATE()) > 90
+         THEN th.BalanceDue ELSE 0 END AS Days_Over_90
+FROM TransHeader th
+INNER JOIN Account a ON th.AccountID = a.ID
+LEFT JOIN PaymentTerms pt ON a.PaymentTermsID = pt.ID
+WHERE th.TransactionType = 1
+    AND th.IsActive = 1
+    AND th.BalanceDue > 0
+    AND th.StatusID != 9  -- exclude voided
+ORDER BY a.CompanyName, th.SaleDate
+```
+
+#### Single Customer AR Drill-Down
+```sql
+-- When user asks "show me AR for [customer name]"
+-- Invoice-level detail for a specific customer
+SELECT
+    th.OrderNumber,
+    th.InvoiceNumber,
+    th.SaleDate,
+    th.Description,
+    th.TotalPrice AS InvoiceTotal,
+    th.PaymentTotal,
+    th.BalanceDue,
+    DATEDIFF(DAY, th.SaleDate, GETDATE()) AS DaysOutstanding,
+    th.StatusText,
+    th.FinanceChargeAmount
+FROM TransHeader th
+INNER JOIN Account a ON th.AccountID = a.ID
+WHERE th.TransactionType = 1
+    AND th.IsActive = 1
+    AND th.BalanceDue > 0
+    AND th.StatusID != 9
+    AND a.CompanyName LIKE '%' + @CustomerName + '%'
+ORDER BY th.SaleDate
+```
+
+#### AR Summary by Customer
+```sql
+-- Summary row per customer with aging bucket totals
+-- Use when user asks "AR summary by customer" or "who owes us the most"
+SELECT
+    a.CompanyName,
+    CASE WHEN a.HasCreditAccount = 1 THEN '*' ELSE '' END AS CreditAcct,
+    COUNT(*) AS OpenInvoices,
+    SUM(th.BalanceDue) AS TotalAR,
+    SUM(CASE WHEN th.SaleDate IS NULL THEN th.BalanceDue ELSE 0 END) AS WIPBuilt,
+    SUM(CASE WHEN th.SaleDate IS NOT NULL AND DATEDIFF(DAY, th.SaleDate, GETDATE()) <= 30 THEN th.BalanceDue ELSE 0 END) AS Current_0_30,
+    SUM(CASE WHEN DATEDIFF(DAY, th.SaleDate, GETDATE()) BETWEEN 31 AND 60 THEN th.BalanceDue ELSE 0 END) AS Days_31_60,
+    SUM(CASE WHEN DATEDIFF(DAY, th.SaleDate, GETDATE()) BETWEEN 61 AND 90 THEN th.BalanceDue ELSE 0 END) AS Days_61_90,
+    SUM(CASE WHEN DATEDIFF(DAY, th.SaleDate, GETDATE()) > 90 THEN th.BalanceDue ELSE 0 END) AS Days_Over_90
+FROM TransHeader th
+INNER JOIN Account a ON th.AccountID = a.ID
+WHERE th.TransactionType = 1 AND th.IsActive = 1 AND th.BalanceDue > 0 AND th.StatusID != 9
+GROUP BY a.CompanyName, a.HasCreditAccount
+ORDER BY TotalAR DESC
+```
+
 ---
 
 ## ACCOUNTS PAYABLE
@@ -764,6 +849,9 @@ Gross margin ~82% in recent periods.
 | "What's our AR?" / "open invoices" | AR Snapshot query |
 | "AR aging" / "past due invoices" | AR Aging Buckets |
 | "AR by payment terms" | AR by Payment Terms |
+| "AR detail" / "AR by customer" / "who owes us" | AR Detail with Customer Breakdown |
+| "AR for [customer]" / "what does [customer] owe" | Single Customer AR Drill-Down |
+| "AR summary by customer" | AR Summary by Customer |
 | "What do we owe?" / "AP" / "open bills" | AP Snapshot |
 | "AP aging" / "what's overdue" | AP Aging |
 | "P&L" / "profit and loss" / "income statement" | P&L Summary or Full P&L |
