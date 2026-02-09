@@ -9,19 +9,19 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 
 ## Current Position
 
-Phase: 4 of 8 (Sales Skill Verification — Wave 2)
+Phase: 5 of 8 (Financial Foundation — Wave 2)
 Plan: 2 of 2 in current phase
 Status: Phase complete
-Last activity: 2026-02-09 -- Completed 04-02-PLAN.md (Query Result Validation)
+Last activity: 2026-02-09 -- Completed 05-02-PLAN.md (Payment & Cost Flow Documentation)
 
-Progress: [█████░░░░░] 58%
+Progress: [█████░░░░░] 67%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 4min08s
-- Total execution time: 0.55 hours
+- Total plans completed: 9
+- Average duration: 3min58s
+- Total execution time: 0.60 hours
 
 **By Phase:**
 
@@ -31,11 +31,11 @@ Progress: [█████░░░░░] 58%
 | 02 | 2 | 8min26s | 4min13s |
 | 03 | 2 | 11min27s | 5min44s |
 | 04 | 2 | 7min2s | 3min31s |
-| 05 | 1 | 2min36s | 2min36s |
+| 05 | 2 | 5min37s | 2min49s |
 
 **Recent Trend:**
-- Last 5 plans: 3min45s, 4min41s, 2min36s, 2min53s, 4min9s
-- Trend: Verification tasks 3-5min (documentation audits faster than query validations); targeted fixes under 3min
+- Last 5 plans: 4min41s, 2min36s, 2min53s, 4min9s, 3min1s
+- Trend: Financial documentation tasks consistently under 3min; verification tasks 3-5min
 
 *Updated after each plan completion*
 
@@ -67,6 +67,11 @@ Recent decisions affecting current work:
 - [04-01]: "Other Products/Services" bucket ($256K, 8.4%) assessed as acceptable catch-all category
 - [04-02]: Cross-reference verification used for query validation due to Mac MCP constraint - all 9 sales templates verified against phase2-test-results.md
 - [04-02]: Internal consistency checks confirm DyeSub categories sum to total, product groups sum to detail total, monthly sum matches annual within $4
+- [05-02]: Deposit workflow documented as two-step process (Payment -> Undeposited, Deposit -> Cash-Checking via DepositJournalID)
+- [05-02]: ACH (TenderType 5) and Wire (7) post directly to Cash-Checking, bypassing undeposited step
+- [05-02]: Payment queries should filter to ClassTypeID IN (20001, 20009) for standard order and bill payments
+- [05-02]: Built status documented as Stage 2.5 with FGI cost flow through NodeID 34 (Cost Of Built - FGI)
+- [05-02]: Off-balance sheet entries explained as cost accounting mode for parts expensed at purchase (~307K entries, 11% of Ledger)
 
 ### Pending Todos
 
@@ -80,14 +85,14 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 04-02-PLAN.md (Query Result Validation - SALES-04, SALES-05, SALES-06)
+Stopped at: Completed 05-02-PLAN.md (Payment & Cost Flow Documentation)
 Resume file: None
 
 **Phase 1 Status:** Complete (1/1 plans done) — Verified 2026-02-08 (gaps fixed by orchestrator)
 **Phase 2 Status:** Complete (2/2 plans done) — Schema & FK verified, ClassTypeID reference compiled 2026-02-09
 **Phase 3 Status:** Complete (2/2 plans done) — CHAPI, Crystal Reports, Macros formalized 2026-02-08
 **Phase 4 Status:** Complete (2/2 plans done) — Sales skill verified 2026-02-09 (6/6 SALES requirements PASS)
-**Phase 5 Status:** In progress (1/2 plans done) — System accounts corrected, Ledger field reference added 2026-02-09
+**Phase 5 Status:** Complete (2/2 plans done) — Financial skill complete 2026-02-09 (system accounts, Ledger fields, deposit workflow, payment references, Built cost flow, OBS explanation)
 **Wave 1 Status:** Complete (3/3 phases done) — Core Skill, Schema, Wiki all verified/formalized
-**Wave 2 Status:** In progress (3/4 plans done, 1 phase complete, 1 active)
-**Next up:** 05-02 (Payment GL Offset Logic) — final Wave 2 plan
+**Wave 2 Status:** Complete (4/4 plans done, 2 phases complete) — Sales & Financial skills verified and enhanced
+**Next up:** Wave 3 starts — Phase 6 (Glossary Skill) or Phase 7 (Test Suite)
