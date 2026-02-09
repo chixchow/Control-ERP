@@ -117,22 +117,27 @@ Plans:
 
 ### Phase 12: Production Workflow
 
-**Goal**: Users can track artwork approvals, monitor station workload, and analyze labor time -- through a new control-erp-production skill
+**Goal**: Users can track artwork approvals, monitor station workload, and analyze production dwell time -- through a new control-erp-production skill
 **Depends on**: Phase 11 (soft -- part usage cards reference Part table)
 **Requirements**: PROD-01, PROD-02, PROD-03
 **Success Criteria** (what must be TRUE):
   1. User can ask "what artwork is pending approval" or "show me the artwork pipeline" and get accurate status counts, stuck items, and turnaround times that match Control's artwork workflow
   2. User can ask "what's the workload at [station]" or "which stations are backed up" and get WIP counts per station with bottleneck identification -- WIP count matching TransHeader WHERE StatusID IN (1,2)
-  3. User can ask "how many hours did [employee] work" or "show labor by station" and get accurate time tracking from TimeCard tables without double-counting parent/detail records
-  4. TimeCard queries use ClassTypeID 20050 for total hours and 20051 for station-level detail, never mixing the two
+  3. User can ask "how long do orders sit in [station]" or "which stages are slowest" and get station dwell time analysis from station transition timestamps, with drill-down by order size
+  4. Station dwell time queries calculate time between station transitions (not TimeCard clock data -- FLS does not use per-job time tracking)
 
 **Critical pitfalls:**
-- TimeCard ClassTypeID double-counting: ClassTypeID 20050 = parent (clock in/out), 20051 = station detail. Mixing them doubles hours. This is the production domain's equivalent of the $1.3M TransDetailParam bug.
 - Geography columns in Station table crash SELECT * queries -- must specify columns explicitly.
 - Journal table is multi-purpose (5.18M rows) -- must filter JournalActivityType=45 for station-related entries.
 - FLS station hierarchy and artwork status usage need live database discovery.
+- FLS does NOT use TimeCard for per-job tracking -- station dwell time (transition timestamps) is the production time metric.
 
 **Research flag:** HIGH -- FLS-specific station configuration (98 stations, department hierarchy, which statuses actively used) requires live discovery queries during planning.
+**Plans**: 2 plans
+
+Plans:
+- [ ] 12-01-PLAN.md -- Create production skill with table architecture and artwork pipeline queries (PROD-01)
+- [ ] 12-02-PLAN.md -- Add station workload (PROD-02), station dwell time analysis (PROD-03), and NL routing
 
 ### Phase 13: Glossary Integration + Reports Catalog
 
@@ -160,7 +165,7 @@ Phases execute in numeric order with parallelization: 9+10 (parallel) -> 11 -> 1
 | 9. Financial Depth | v1.1 | 2/2 | Complete | 2026-02-09 |
 | 10. Customer Intelligence | v1.1 | 2/2 | Complete | 2026-02-09 |
 | 11. Inventory Management | v1.1 | 2/2 | Complete | 2026-02-09 |
-| 12. Production Workflow | v1.1 | 0/TBD | Not started | - |
+| 12. Production Workflow | v1.1 | 0/2 | Planned | - |
 | 13. Glossary Integration | v1.1 | 0/TBD | Not started | - |
 
 ---
