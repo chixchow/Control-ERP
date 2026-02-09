@@ -46,10 +46,10 @@ START ----+---> Phase 2 (Schema) --+---> Phase 5 (Financial)+---> Phase 7 (Tests
   1. `control-erp-core-SKILL.md` contains validated TransactionType mappings (Types 1, 2, 6, 7, 8, 9), StatusID values per type, and pricing logic (SubTotalPrice, SaleDate filtering) -- a user asking "What StatusIDs exist for Type 2 estimates?" gets an accurate answer from the skill alone
   2. Knowledge log at `documentation/control-erp-knowledge-log.md` is structured with date, query, finding, and source for every validated discovery -- a new session can review the log and understand what was learned and when
   3. Any contradictions between the skill file and CLAUDE.md/MEMORY.md are resolved (single source of truth)
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 01-01: Review and verify core skill content and knowledge log structure
+- [ ] 01-01-PLAN.md — Resolve contradictions across truth sources, fill core skill gaps, structure knowledge log
 
 ### Phase 2: Schema Infrastructure
 **Goal**: Schema documentation, FK relationships, domain classification, and ClassTypeID reference are verified complete and consumable by downstream skills
