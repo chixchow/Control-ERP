@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 ## Current Position
 
-Phase: 11 of 13 (Inventory Management) -- IN PROGRESS
-Plan: 1 of 2 complete
-Status: In progress
-Last activity: 2026-02-09 -- Completed 11-01-PLAN.md (Inventory Skill Foundation)
+Phase: 11 of 13 (Inventory Management) -- COMPLETE
+Plan: 2 of 2 complete
+Status: Phase complete
+Last activity: 2026-02-09 -- Completed 11-02-PLAN.md (Purchasing Intelligence and NL Routing)
 
-Progress: [█████░░░░░] 50% (v1.1) -- 5 of 10 plans complete
+Progress: [██████░░░░] 60% (v1.1) -- 6 of 10 plans complete
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [█████░░░░░] 50% (v1.1) -- 5 of 10 plans complete
 - Total execution time: 1.04 hours
 
 **v1.1 Velocity:**
-- Total plans completed: 5
-- Average duration: 3min38s
-- Total execution time: 0.31 hours
+- Total plans completed: 6
+- Average duration: 3min24s
+- Total execution time: 0.34 hours
 
 ## Accumulated Context
 
@@ -52,6 +52,10 @@ Recent decisions affecting current work:
 - Two-tier confidence model for inventory: Primary (reliable PO data) vs Secondary (caveated inventory quantities)
 - Default to Warehouse 10 for inventory queries (has 98% of stock vs Apparel WH with 3 parts)
 - Progressive filtering for inventory: IsActive -> TrackInventory -> context-dependent qty filter
+- GL NodeID 10414 is authoritative for inventory valuation ($651K), not part-level sum
+- VendorTransDetail polymorphic link: try CatalogItem path (12076) first, then direct Part (12014)
+- Months of supply calculation marked as SECONDARY TIER (depends on incomplete data)
+- th.ID DESC for PO ordering (not SaleDate which is unreliable for Type 7)
 
 ### Pending Todos
 
@@ -59,13 +63,13 @@ None.
 
 ### Blockers/Concerns
 
-- Phase 11: Warehouse configuration discovered (Warehouse 10 = default) -- blocker cleared
+- Phase 11: COMPLETE -- blocker cleared
 - Phase 12: Station hierarchy and artwork status usage still require live database discovery
 
 ## Session Continuity
 
-Last session: 2026-02-09T19:10Z
-Stopped at: Completed 11-01-PLAN.md (Inventory Skill Foundation) -- Phase 11 1/2 complete
+Last session: 2026-02-09T19:12Z
+Stopped at: Completed 11-02-PLAN.md (Purchasing Intelligence and NL Routing) -- Phase 11 COMPLETE (2/2)
 Resume file: None
 
 **v1.0 Status:** SHIPPED (8 phases, 15 plans, 35/35 requirements)
