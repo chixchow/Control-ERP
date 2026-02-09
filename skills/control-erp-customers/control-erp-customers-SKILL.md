@@ -452,6 +452,473 @@ ORDER BY j.CompletedDateTime DESC
 
 ---
 
+## CUSTOMER RANKING & TOP CUSTOMERS
+
+### Top Customers by Revenue (Default)
+
+Returns the top customers ranked by trailing 12-month revenue with year-over-year comparison.
+
+**Default: TOP 10** (user can request different sizes like "top 20", "top 50")
+
+```sql
+;WITH CustomerRevenue AS (
+    SELECT
+        a.ID AS AccountID,
+        a.CompanyName,
+        a.AccountNumber,
+        COUNT(CASE WHEN th.SaleDate >= DATEADD(YEAR, -1, GETDATE()) THEN 1 END) AS OrdersT12M,
+        SUM(CASE WHEN th.SaleDate >= DATEADD(YEAR, -1, GETDATE())
+                 THEN th.SubTotalPrice ELSE 0 END) AS RevenueT12M,
+        SUM(CASE WHEN th.SaleDate >= DATEADD(YEAR, -2, GETDATE())
+                 AND th.SaleDate < DATEADD(YEAR, -1, GETDATE())
+                 THEN th.SubTotalPrice ELSE 0 END) AS RevenuePrior12M
+    FROM dbo.Account a
+    JOIN dbo.TransHeader th ON th.AccountID = a.ID
+    WHERE a.IsActive = 1
+      AND a.IsClient = 1
+      AND a.AccountNumber > 0  -- Exclude Walk-In
+      AND th.TransactionType = 1
+      AND th.IsActive = 1
+      AND th.SaleDate IS NOT NULL
+      AND th.StatusID NOT IN (9)
+    GROUP BY a.ID, a.CompanyName, a.AccountNumber
+)
+SELECT TOP 10  -- Or user-specified N
+    CompanyName,
+    AccountNumber,
+    RevenueT12M,
+    RevenuePrior12M,
+    CASE
+        WHEN RevenuePrior12M > 0
+        THEN CAST((RevenueT12M - RevenuePrior12M) * 100.0 / RevenuePrior12M AS DECIMAL(5,1))
+        ELSE NULL
+    END AS YoYChangePct,
+    OrdersT12M,
+    CASE
+        WHEN OrdersT12M > 0
+        THEN CAST(RevenueT12M / OrdersT12M AS DECIMAL(10,2))
+        ELSE 0
+    END AS AvgOrderValueT12M
+FROM CustomerRevenue
+WHERE RevenueT12M > 0
+ORDER BY RevenueT12M DESC
+```
+
+**Output columns**:
+- CompanyName, AccountNumber
+- RevenueT12M (trailing 12 months)
+- RevenuePrior12M (prior 12 months)
+- YoYChangePct (percent change, positive = growth, negative = decline)
+- OrdersT12M (order count)
+- AvgOrderValueT12M (average order size)
+
+**Cross-check note**: Top 10 results should be consistent with the control-erp-sales skill's top customer output. FLASH should appear at ~$430K as top customer (14% of revenue).
+
+### Alternative Rankings
+
+Users may request different ranking criteria:
+
+**Top by Order Count** ("top customers by order count"):
+```sql
+-- Use same CTE as above
+ORDER BY OrdersT12M DESC
+```
+
+**Top by Average Order Value** ("top customers by average order"):
+```sql
+-- Use same CTE as above
+ORDER BY AvgOrderValueT12M DESC
+```
+
+**Top Customers All Time** ("top customers all time"):
+```sql
+-- Remove date filter, use lifetime SUM
+SELECT TOP 10
+    a.CompanyName,
+    a.AccountNumber,
+    COUNT(*) AS TotalOrders,
+    SUM(th.SubTotalPrice) AS LifetimeRevenue,
+    MAX(th.SaleDate) AS LastOrderDate
+FROM dbo.Account a
+JOIN dbo.TransHeader th ON th.AccountID = a.ID
+WHERE a.IsActive = 1
+  AND a.IsClient = 1
+  AND a.AccountNumber > 0
+  AND th.TransactionType = 1
+  AND th.IsActive = 1
+  AND th.SaleDate IS NOT NULL
+  AND th.StatusID NOT IN (9)
+GROUP BY a.ID, a.CompanyName, a.AccountNumber
+ORDER BY LifetimeRevenue DESC
+```
+
+**Top Customers This Year** ("top customers 2025" or "top customers this year"):
+```sql
+-- Add year filter: WHERE th.SaleDate >= '2025-01-01' AND th.SaleDate < '2026-01-01'
+```
+
+### Pareto Analysis (80/20 Rule)
+
+Shows cumulative revenue percentage to identify the vital few customers driving most revenue:
+
+```sql
+;WITH CustomerRevenue AS (
+    SELECT
+        a.CompanyName,
+        a.AccountNumber,
+        SUM(th.SubTotalPrice) AS Revenue
+    FROM dbo.Account a
+    JOIN dbo.TransHeader th ON th.AccountID = a.ID
+    WHERE a.IsActive = 1
+      AND a.IsClient = 1
+      AND a.AccountNumber > 0
+      AND th.TransactionType = 1
+      AND th.IsActive = 1
+      AND th.SaleDate IS NOT NULL
+      AND th.StatusID NOT IN (9)
+      AND th.SaleDate >= DATEADD(YEAR, -1, GETDATE())  -- Trailing 12mo
+    GROUP BY a.CompanyName, a.AccountNumber
+),
+RankedRevenue AS (
+    SELECT *,
+        SUM(Revenue) OVER (ORDER BY Revenue DESC ROWS UNBOUNDED PRECEDING) AS CumulativeRevenue,
+        (SELECT SUM(Revenue) FROM CustomerRevenue) AS TotalRevenue
+    FROM CustomerRevenue
+)
+SELECT TOP 50
+    CompanyName,
+    AccountNumber,
+    Revenue,
+    CAST(Revenue * 100.0 / TotalRevenue AS DECIMAL(5,2)) AS PctOfTotal,
+    CAST(CumulativeRevenue * 100.0 / TotalRevenue AS DECIMAL(5,2)) AS CumulativePct
+FROM RankedRevenue
+ORDER BY Revenue DESC
+```
+
+**Typical finding**: Top 20% of customers = 80% of revenue. At FLS: Top 10 customers = 49.3% of revenue.
+
+**Natural Language Triggers**:
+- "top customers"
+- "best customers"
+- "who are our biggest customers"
+- "top 10 customers"
+- "top customers by revenue"
+- "pareto analysis"
+- "80/20 customers"
+
+---
+
+## CUSTOMER SEGMENTATION (RFM)
+
+### RFM Overview
+
+**RFM** = Recency, Frequency, Monetary scoring system for customer segmentation.
+
+- **Recency**: Days since last order (lower = better = higher score)
+- **Frequency**: Number of orders (higher = better)
+- **Monetary**: Total revenue (higher = better)
+
+Each metric scored 1-5 using NTILE(5) quintile bucketing. Combined scores map to named segments.
+
+**Lookback period**: 2 years (balances pattern stability with recent behavior)
+
+### RFM Scoring Query
+
+```sql
+;WITH CustomerMetrics AS (
+    SELECT
+        a.ID AS AccountID,
+        a.CompanyName,
+        a.AccountNumber,
+        DATEDIFF(DAY, MAX(th.SaleDate), GETDATE()) AS Recency,
+        COUNT(th.ID) AS Frequency,
+        SUM(th.SubTotalPrice) AS Monetary
+    FROM dbo.Account a
+    JOIN dbo.TransHeader th ON th.AccountID = a.ID
+    WHERE a.IsActive = 1
+      AND a.IsClient = 1
+      AND a.AccountNumber > 0  -- Exclude Walk-In
+      AND th.TransactionType = 1
+      AND th.IsActive = 1
+      AND th.SaleDate IS NOT NULL
+      AND th.StatusID NOT IN (9)
+      AND th.SaleDate >= DATEADD(YEAR, -2, GETDATE())  -- 2-year lookback
+    GROUP BY a.ID, a.CompanyName, a.AccountNumber
+),
+RFMScores AS (
+    SELECT *,
+        NTILE(5) OVER (ORDER BY Recency ASC) AS R_Score,  -- Lower recency = higher score
+        NTILE(5) OVER (ORDER BY Frequency DESC) AS F_Score,
+        NTILE(5) OVER (ORDER BY Monetary DESC) AS M_Score
+    FROM CustomerMetrics
+)
+SELECT
+    CompanyName,
+    AccountNumber,
+    Recency,
+    Frequency,
+    Monetary,
+    R_Score,
+    F_Score,
+    M_Score,
+    R_Score + F_Score + M_Score AS RFM_Total,
+    CASE
+        WHEN R_Score >= 4 AND F_Score >= 4 AND M_Score >= 4 THEN 'Champions'
+        WHEN R_Score >= 3 AND F_Score >= 3 AND M_Score >= 3 THEN 'Loyal'
+        WHEN R_Score >= 4 AND F_Score <= 2 THEN 'New Customers'
+        WHEN R_Score <= 2 AND F_Score >= 3 AND M_Score >= 3 THEN 'At Risk'
+        WHEN R_Score <= 2 AND F_Score >= 4 AND M_Score >= 4 THEN 'Cant Lose Them'
+        WHEN R_Score <= 2 AND F_Score <= 2 THEN 'Lost'
+        ELSE 'Needs Attention'
+    END AS Segment
+FROM RFMScores
+ORDER BY RFM_Total DESC
+```
+
+### Named Segments
+
+| Segment | Criteria | Description | Action |
+|---------|----------|-------------|--------|
+| **Champions** | R≥4, F≥4, M≥4 | Recent, frequent, high-value | VIP treatment, upsell premium products |
+| **Loyal** | R≥3, F≥3, M≥3 | Consistent ordering, solid value | Maintain relationship, loyalty programs |
+| **New Customers** | R≥4, F≤2 | Very recent but low frequency | Nurture early relationship, onboarding |
+| **At Risk** | R≤2, F≥3, M≥3 | Good history but dormant | Re-engagement campaign, check satisfaction |
+| **Cant Lose Them** | R≤2, F≥4, M≥4 | Previously top-tier, now dormant | Urgent executive outreach |
+| **Lost** | R≤2, F≤2 | Long dormant, never engaged | Low priority, archive |
+| **Needs Attention** | (all other) | Mixed signals | Case-by-case review |
+
+### Segment Summary Query
+
+Aggregate view of segment distribution and revenue impact:
+
+```sql
+;WITH CustomerMetrics AS (
+    -- Same CTE as above
+),
+RFMScores AS (
+    -- Same CTE as above
+),
+SegmentedCustomers AS (
+    SELECT
+        CASE
+            WHEN R_Score >= 4 AND F_Score >= 4 AND M_Score >= 4 THEN 'Champions'
+            WHEN R_Score >= 3 AND F_Score >= 3 AND M_Score >= 3 THEN 'Loyal'
+            WHEN R_Score >= 4 AND F_Score <= 2 THEN 'New Customers'
+            WHEN R_Score <= 2 AND F_Score >= 3 AND M_Score >= 3 THEN 'At Risk'
+            WHEN R_Score <= 2 AND F_Score >= 4 AND M_Score >= 4 THEN 'Cant Lose Them'
+            WHEN R_Score <= 2 AND F_Score <= 2 THEN 'Lost'
+            ELSE 'Needs Attention'
+        END AS Segment,
+        Monetary
+    FROM RFMScores
+)
+SELECT
+    Segment,
+    COUNT(*) AS CustomerCount,
+    SUM(Monetary) AS TotalRevenue,
+    AVG(Monetary) AS AvgRevenuePerCustomer,
+    CAST(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM SegmentedCustomers) AS DECIMAL(5,2)) AS PctOfCustomers,
+    CAST(SUM(Monetary) * 100.0 / (SELECT SUM(Monetary) FROM SegmentedCustomers) AS DECIMAL(5,2)) AS PctOfRevenue
+FROM SegmentedCustomers
+GROUP BY Segment
+ORDER BY TotalRevenue DESC
+```
+
+**Natural Language Triggers**:
+- "customer segmentation"
+- "RFM analysis"
+- "segment our customers"
+- "which customers are champions"
+- "show customer segments"
+- "segment summary"
+
+---
+
+## AT-RISK DETECTION & DORMANCY
+
+### Multi-Signal Risk Model Overview
+
+Customer churn risk is detected using 4 signals:
+
+1. **Dormancy** (primary): Customer hasn't ordered in longer than their personal threshold
+2. **Declining Spend**: Revenue down >30% YoY
+3. **Shrinking Orders**: Average order value down >30% YoY
+4. **Late Payments**: Increasing payment delays (reference control-erp-financial for payment history)
+
+**Primary signal**: Dormancy with personalized thresholds based on each customer's historical ordering cadence.
+
+### Personalized Dormancy Detection
+
+Uses each customer's historical ordering pattern to calculate a personal "overdue" threshold. Customers with irregular patterns get customized detection rather than one-size-fits-all.
+
+**Algorithm**:
+1. Calculate gap between each pair of consecutive orders using LAG() window function
+2. Compute AVG gap and STDEV gap per customer
+3. Personal threshold = AVG + 1.5 × STDEV
+4. Minimum 4 orders required for pattern (else fallback to 90 days)
+5. Flag customers where DaysSinceLastOrder > PersonalThreshold
+
+```sql
+;WITH OrderGaps AS (
+    SELECT
+        th.AccountID,
+        th.SaleDate,
+        LAG(th.SaleDate) OVER (PARTITION BY th.AccountID ORDER BY th.SaleDate) AS PrevSaleDate,
+        DATEDIFF(DAY,
+                 LAG(th.SaleDate) OVER (PARTITION BY th.AccountID ORDER BY th.SaleDate),
+                 th.SaleDate) AS DaysBetweenOrders
+    FROM dbo.TransHeader th
+    WHERE th.TransactionType = 1
+      AND th.IsActive = 1
+      AND th.SaleDate IS NOT NULL
+      AND th.StatusID NOT IN (9)
+),
+CustomerCadence AS (
+    SELECT
+        AccountID,
+        COUNT(*) AS OrderCount,
+        AVG(DaysBetweenOrders * 1.0) AS AvgGap,
+        STDEV(DaysBetweenOrders) AS StdDevGap,
+        MAX(DaysBetweenOrders) AS MaxGap,
+        CASE
+            WHEN COUNT(*) >= 4
+            THEN CAST(AVG(DaysBetweenOrders * 1.0) + 1.5 * ISNULL(STDEV(DaysBetweenOrders), 0) AS INT)
+            ELSE 90  -- Fallback for insufficient history
+        END AS PersonalThreshold
+    FROM OrderGaps
+    WHERE DaysBetweenOrders IS NOT NULL
+    GROUP BY AccountID
+)
+SELECT
+    a.CompanyName,
+    a.AccountNumber,
+    MAX(th.SaleDate) AS LastOrderDate,
+    DATEDIFF(DAY, MAX(th.SaleDate), GETDATE()) AS DaysSinceLastOrder,
+    cc.AvgGap AS TypicalOrderGapDays,
+    cc.PersonalThreshold AS DormancyThresholdDays,
+    DATEDIFF(DAY, MAX(th.SaleDate), GETDATE()) - cc.PersonalThreshold AS DaysOverdue,
+    SUM(CASE WHEN th.SaleDate >= DATEADD(YEAR, -1, GETDATE())
+             THEN th.SubTotalPrice ELSE 0 END) AS Trailing12MoRevenue,
+    SUM(CASE WHEN th.SaleDate >= DATEADD(YEAR, -2, GETDATE())
+             AND th.SaleDate < DATEADD(YEAR, -1, GETDATE())
+             THEN th.SubTotalPrice ELSE 0 END) AS Prior12MoRevenue
+FROM dbo.Account a
+JOIN dbo.TransHeader th ON th.AccountID = a.ID
+LEFT JOIN CustomerCadence cc ON cc.AccountID = a.ID
+WHERE a.IsActive = 1
+  AND a.IsClient = 1
+  AND a.AccountNumber > 0  -- Exclude Walk-In
+  AND th.TransactionType = 1
+  AND th.IsActive = 1
+  AND th.SaleDate IS NOT NULL
+  AND th.StatusID NOT IN (9)
+GROUP BY a.CompanyName, a.AccountNumber, cc.AvgGap, cc.PersonalThreshold
+HAVING DATEDIFF(DAY, MAX(th.SaleDate), GETDATE()) > ISNULL(cc.PersonalThreshold, 90)
+ORDER BY
+    SUM(CASE WHEN th.SaleDate >= DATEADD(YEAR, -1, GETDATE()) THEN th.SubTotalPrice ELSE 0 END)
+    * (DATEDIFF(DAY, MAX(th.SaleDate), GETDATE()) * 1.0 / ISNULL(NULLIF(cc.PersonalThreshold, 0), 90)) DESC
+```
+
+**Output columns**:
+- CompanyName, AccountNumber
+- LastOrderDate
+- DaysSinceLastOrder
+- TypicalOrderGapDays (average historical gap)
+- DormancyThresholdDays (personal threshold)
+- DaysOverdue (how far past threshold)
+- Trailing12MoRevenue, Prior12MoRevenue (revenue at risk)
+
+**Sort logic**: Combined risk score blending revenue impact (revenue size) with overdue severity (days past threshold ratio). Higher score = higher priority.
+
+**Why personalized thresholds matter**:
+- Customer A orders every 30 days → flag if 60 days dormant
+- Customer B orders every 180 days → flag if 360 days dormant
+- Same 90-day threshold would miss Customer A's early warning and false-alarm Customer B
+
+### Simple Dormancy (Fallback)
+
+For ad-hoc user-specified thresholds ("who hasn't ordered in 90 days"):
+
+```sql
+SELECT
+    a.CompanyName,
+    a.AccountNumber,
+    MAX(th.SaleDate) AS LastOrderDate,
+    DATEDIFF(DAY, MAX(th.SaleDate), GETDATE()) AS DaysSinceLastOrder,
+    SUM(CASE WHEN th.SaleDate >= DATEADD(YEAR, -1, GETDATE())
+             THEN th.SubTotalPrice ELSE 0 END) AS Trailing12MoRevenue
+FROM dbo.Account a
+JOIN dbo.TransHeader th ON th.AccountID = a.ID
+WHERE a.IsActive = 1
+  AND a.IsClient = 1
+  AND a.AccountNumber > 0
+  AND th.TransactionType = 1
+  AND th.IsActive = 1
+  AND th.SaleDate IS NOT NULL
+  AND th.StatusID NOT IN (9)
+GROUP BY a.ID, a.CompanyName, a.AccountNumber
+HAVING DATEDIFF(DAY, MAX(th.SaleDate), GETDATE()) > @UserSpecifiedDays
+ORDER BY Trailing12MoRevenue DESC
+```
+
+### Spend Trend Detection
+
+Customers with declining revenue (>30% drop YoY):
+
+```sql
+;WITH CustomerRevenue AS (
+    SELECT
+        a.ID AS AccountID,
+        a.CompanyName,
+        a.AccountNumber,
+        SUM(CASE WHEN th.SaleDate >= DATEADD(YEAR, -1, GETDATE())
+                 THEN th.SubTotalPrice ELSE 0 END) AS RevenueT12M,
+        SUM(CASE WHEN th.SaleDate >= DATEADD(YEAR, -2, GETDATE())
+                 AND th.SaleDate < DATEADD(YEAR, -1, GETDATE())
+                 THEN th.SubTotalPrice ELSE 0 END) AS RevenuePrior12M
+    FROM dbo.Account a
+    JOIN dbo.TransHeader th ON th.AccountID = a.ID
+    WHERE a.IsActive = 1
+      AND a.IsClient = 1
+      AND a.AccountNumber > 0
+      AND th.TransactionType = 1
+      AND th.IsActive = 1
+      AND th.SaleDate IS NOT NULL
+      AND th.StatusID NOT IN (9)
+    GROUP BY a.ID, a.CompanyName, a.AccountNumber
+)
+SELECT
+    CompanyName,
+    AccountNumber,
+    RevenueT12M,
+    RevenuePrior12M,
+    CAST((RevenueT12M - RevenuePrior12M) * 100.0 / RevenuePrior12M AS DECIMAL(5,1)) AS YoYChangePct
+FROM CustomerRevenue
+WHERE RevenuePrior12M > 0
+  AND RevenueT12M > 0
+  AND (RevenueT12M - RevenuePrior12M) * 100.0 / RevenuePrior12M < -30  -- Down >30%
+ORDER BY YoYChangePct ASC
+```
+
+### Risk Signal Notes
+
+- **Dormancy is primary**: Most actionable early warning signal
+- **Spend trend is secondary**: Confirms risk if combined with dormancy
+- **Late payments**: Query control-erp-financial for payment history analysis
+- **Shrinking orders**: Can be calculated similarly to spend trend using AVG(SubTotalPrice)
+
+**Natural Language Triggers**:
+- "at-risk customers"
+- "customers at risk"
+- "who's about to churn"
+- "dormant customers"
+- "customers we're losing"
+- "churn risk"
+- "which customers haven't ordered"
+- "customers with declining revenue"
+
+---
+
 ## NATURAL LANGUAGE INTERPRETATION
 
 ### Routing Table
@@ -474,8 +941,38 @@ ORDER BY j.CompletedDateTime DESC
 | "when did we last talk to [customer]" | Drill-down | Last Contact Activity | Most recent CRM activity |
 | "AR for [customer]" | Financial query | Inline AR subquery OR financial skill | SUM(BalanceDue) |
 | "what does [customer] owe" | Financial query | Inline AR subquery OR financial skill | SUM(BalanceDue) |
+| "top customers" | Ranking | Customer Ranking | Default TOP 10, trailing 12mo |
+| "best customers" | Ranking | Customer Ranking | Default TOP 10, trailing 12mo |
+| "who are our biggest customers" | Ranking | Customer Ranking | Default TOP 10, trailing 12mo |
+| "top 20 customers" | Ranking | Customer Ranking | User-specified N |
+| "top customers by revenue" | Ranking | Customer Ranking | Default sort (revenue) |
+| "top customers by order count" | Ranking | Customer Ranking | ORDER BY OrdersT12M DESC |
+| "top customers by average order" | Ranking | Customer Ranking | ORDER BY AvgOrderValueT12M DESC |
+| "top customers all time" | Ranking | Customer Ranking | Lifetime revenue, no date filter |
+| "top customers 2025" | Ranking | Customer Ranking | Year filter |
+| "pareto analysis" | Ranking | Pareto Analysis | Cumulative revenue percentages |
+| "80/20 customers" | Ranking | Pareto Analysis | Cumulative revenue percentages |
+| "customer segmentation" | Segmentation | RFM Segmentation | Full RFM query with segments |
+| "RFM analysis" | Segmentation | RFM Segmentation | Full RFM query with segments |
+| "segment our customers" | Segmentation | RFM Segmentation | Full RFM query with segments |
+| "which customers are champions" | Segmentation | RFM Segmentation | Filter WHERE Segment = 'Champions' |
+| "show customer segments" | Segmentation | Segment Summary | Aggregate counts per segment |
+| "segment summary" | Segmentation | Segment Summary | Aggregate counts per segment |
+| "at-risk customers" | At-risk | Personalized Dormancy | Primary query with personal thresholds |
+| "customers at risk" | At-risk | Personalized Dormancy | Primary query with personal thresholds |
+| "who's about to churn" | At-risk | Personalized Dormancy | Primary query with personal thresholds |
+| "dormant customers" | At-risk | Personalized Dormancy | Primary query with personal thresholds |
+| "customers we're losing" | At-risk | Personalized Dormancy | Primary query with personal thresholds |
+| "churn risk" | At-risk | Personalized Dormancy | Primary query with personal thresholds |
+| "which customers haven't ordered" | At-risk | Simple Dormancy | User specifies threshold |
+| "customers with declining revenue" | At-risk | Spend Trend Detection | YoY decline >30% |
+| "who hasn't ordered in [N] days" | At-risk | Simple Dormancy | User-specified threshold |
+| "customers down YoY" | At-risk | Spend Trend Detection | YoY decline >30% |
 
-<!-- Plan 02 adds: ranking, segmentation, RFM, dormancy, at-risk routing -->
+**Cross-domain routing**:
+- Payment history / late payments → control-erp-financial (Payment table queries)
+- Product mix per customer → control-erp-sales (TransDetail drill-down)
+- Sales rep performance → control-erp-sales (SalesPersonID aggregation)
 
 ---
 
@@ -567,10 +1064,12 @@ Contacts at Flash Apparel:
 
 ### To Reference Files
 
-(Plan 02 may extract detailed RFM/dormancy methodology to `references/customer-analysis.md` if main file exceeds ~1,000 lines)
+- **references/customer-analysis.md**: Full RFM scoring query, Pareto analysis, personalized dormancy detection algorithm (extracted from main file when exceeding 1,000 lines)
 
 ---
 
 *Skill created: 2026-02-09*
 *Plan: 10-01 (CUST-01 - Customer Profile Lookup)*
-*Line count: ~[TBD at completion]*
+*Extended: 2026-02-09*
+*Plan: 10-02 (CUST-02, CUST-03 - Customer Ranking, Segmentation, At-Risk Detection)*
+*Line count: 1,073 lines (main file), ~[TBD] (references)*
