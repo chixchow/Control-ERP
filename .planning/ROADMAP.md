@@ -135,11 +135,11 @@ Plans:
   3. Product breakdown test passes -- DyeSub Print categories match Control "Sales by Product" report totals
   4. Customer revenue test passes -- Top 10 customers by revenue match Control report
   5. Known-gotcha tests pass -- TransDetailParam without IsActive filter, SubTotalPrice not TotalPrice, SaleDate not OrderCreatedDate all verified correct
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 07-01: Execute revenue baseline, product breakdown, and customer revenue tests
-- [ ] 07-02: Execute date range, gotcha, and remaining tests; compile scorecard
+- [ ] 07-01-PLAN.md — Execute Tier 1-3 tests (revenue baseline, product breakdown, customer revenue) and create scorecard
+- [ ] 07-02-PLAN.md — Execute Tier 4-7 tests, write gotcha validation section, compile final scorecard summary
 
 ### Phase 8: Documentation & Milestone Close
 **Goal**: Complete maintainability documentation exists and all 35 requirements are verified complete, closing Milestone 1
