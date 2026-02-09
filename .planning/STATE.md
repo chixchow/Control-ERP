@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** Any FLS team member can ask a business question in plain English and get an accurate, formatted answer from their ERP data.
-**Current focus:** Wave 4 - Phase 8 (Documentation & Milestone Close)
+**Current focus:** Milestone 1 COMPLETE -- All 8 phases done, 35/35 requirements PASS
 
 ## Current Position
 
-Phase: 8 of 8 (Documentation & Milestone Close — Wave 4)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-09 -- Completed 08-02-PLAN.md (Crystal Reports Catalog + Known Gotchas)
+Phase: 8 of 8 (Documentation & Milestone Close -- Wave 4)
+Plan: 3 of 3 in current phase
+Status: MILESTONE 1 COMPLETE
+Last activity: 2026-02-09 -- Completed 08-03-PLAN.md (Validation Methodology + Milestone Close)
 
-Progress: [█████████░] 95%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
+- Total plans completed: 15
 - Average duration: 4min11s
-- Total execution time: 0.98 hours
+- Total execution time: 1.04 hours
 
 **By Phase:**
 
@@ -34,10 +34,10 @@ Progress: [█████████░] 95%
 | 05 | 2 | 5min37s | 2min49s |
 | 06 | 1 | 8min46s | 8min46s |
 | 07 | 2 | 6min56s | 3min28s |
-| 08 | 2 | 9min23s | 4min42s |
+| 08 | 3 | 13min23s | 4min28s |
 
 **Recent Trend:**
-- Last 5 plans: 8min46s, 3min11s, 3min45s, 4min7s, 5min16s
+- Last 5 plans: 3min11s, 3min45s, 4min7s, 5min16s, 4min0s
 - Trend: Validation tasks 3-4min; glossary/synthesis 8-9min; documentation tasks 4-5min
 
 *Updated after each plan completion*
@@ -89,31 +89,33 @@ Recent decisions affecting current work:
 - [08-01]: Web Orders added as separate section beyond 6 required - unique deduplication requirements warrant visibility
 - [08-02]: MCP unavailable for ReportMenuItem query - used existing report_summary.md, schemas, and wiki references as fallback data sources
 - [08-02]: Crystal Reports catalog explicitly notes .rpt SQL extraction deferred to Milestone 2
+- [08-03]: 35/35 requirements cross-checked with specific evidence file citations -- no rubber-stamping
+- [08-03]: Validation methodology documents actual Milestone 1 process (not theoretical) for reproducibility
 
 ### Pending Todos
 
-None yet.
+None -- Milestone 1 complete.
 
 ### Blockers/Concerns
 
-- None - Phase 8 in progress (2/3 plans complete)
+- None -- Milestone 1 complete. Next: Milestone 2 planning.
 
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 08-02-PLAN.md (Crystal Reports Catalog + Known Gotchas)
+Stopped at: MILESTONE 1 COMPLETE -- All 35/35 requirements verified PASS
 Resume file: None
 
-**Phase 1 Status:** Complete (1/1 plans done) — Verified 2026-02-08 (gaps fixed by orchestrator)
-**Phase 2 Status:** Complete (2/2 plans done) — Schema & FK verified, ClassTypeID reference compiled 2026-02-09
-**Phase 3 Status:** Complete (2/2 plans done) — CHAPI, Crystal Reports, Macros formalized 2026-02-08
-**Phase 4 Status:** Complete (2/2 plans done) — Sales skill verified 2026-02-09 (6/6 SALES requirements PASS)
-**Phase 5 Status:** Complete (2/2 plans done) — Financial skill complete 2026-02-09 (system accounts, Ledger fields, deposit workflow, payment references, Built cost flow, OBS explanation)
-**Phase 6 Status:** Complete (1/1 plans done) — Glossary skill created 2026-02-09 (3/3 GLOSS requirements PASS, verified 7/7 must-haves)
-**Phase 7 Status:** Complete (2/2 plans done) — Test suite complete 2026-02-09 (21/21 tests PASS, all 6 TEST requirements satisfied, $1.3M+ error prevention validated)
-**Wave 1 Status:** Complete (3/3 phases done) — Core Skill, Schema, Wiki all verified/formalized
-**Wave 2 Status:** Complete (4/4 plans done, 2 phases complete) — Sales & Financial skills verified and enhanced
-**Wave 3 Status:** Complete (3/3 plans done, 2 phases complete) — Glossary + validation complete
-**Phase 8 Status:** In progress (2/3 plans done) — DOC-01 through DOC-05 complete 2026-02-09
-**Wave 4 Status:** In progress (2/3 plans done)
-**Next up:** Phase 8 Plan 03 (Validation Methodology + Milestone Close)
+**Phase 1 Status:** Complete (1/1 plans done) -- Verified 2026-02-08 (gaps fixed by orchestrator)
+**Phase 2 Status:** Complete (2/2 plans done) -- Schema & FK verified, ClassTypeID reference compiled 2026-02-09
+**Phase 3 Status:** Complete (2/2 plans done) -- CHAPI, Crystal Reports, Macros formalized 2026-02-08
+**Phase 4 Status:** Complete (2/2 plans done) -- Sales skill verified 2026-02-09 (6/6 SALES requirements PASS)
+**Phase 5 Status:** Complete (2/2 plans done) -- Financial skill complete 2026-02-09
+**Phase 6 Status:** Complete (1/1 plans done) -- Glossary skill created 2026-02-09 (3/3 GLOSS requirements PASS)
+**Phase 7 Status:** Complete (2/2 plans done) -- Test suite complete 2026-02-09 (21/21 tests PASS, $1.3M+ error prevention)
+**Phase 8 Status:** Complete (3/3 plans done) -- DOC-01 through DOC-06 complete, 35/35 requirements verified 2026-02-09
+**Wave 1 Status:** Complete (3/3 phases done)
+**Wave 2 Status:** Complete (4/4 plans done, 2 phases complete)
+**Wave 3 Status:** Complete (3/3 plans done, 2 phases complete)
+**Wave 4 Status:** Complete (3/3 plans done, 1 phase complete)
+**Next up:** Milestone 2 planning

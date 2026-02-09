@@ -56,12 +56,12 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 
 ### Documentation & Maintainability
 
-- [ ] **DOC-01**: Skill architecture documented — dependency graph, what each skill covers, how they interact
-- [ ] **DOC-02**: Query pattern reference — all validated SQL patterns with natural language triggers
-- [ ] **DOC-03**: Business process documentation — order lifecycle (estimate → order → production → shipping → invoice)
-- [ ] **DOC-04**: Crystal Reports catalog — which reports exist, parameters, when to use vs. custom query
-- [ ] **DOC-05**: Known gotchas and pitfalls documented (things future maintainers need to know)
-- [ ] **DOC-06**: Validation methodology documented — how to verify skill accuracy against Control reports
+- [x] **DOC-01**: Skill architecture documented — dependency graph, what each skill covers, how they interact
+- [x] **DOC-02**: Query pattern reference — all validated SQL patterns with natural language triggers
+- [x] **DOC-03**: Business process documentation — order lifecycle (estimate → order → production → shipping → invoice)
+- [x] **DOC-04**: Crystal Reports catalog — which reports exist, parameters, when to use vs. custom query
+- [x] **DOC-05**: Known gotchas and pitfalls documented (things future maintainers need to know)
+- [x] **DOC-06**: Validation methodology documented — how to verify skill accuracy against Control reports
 
 ## v2 Requirements (Milestone 2: Read-Layer Build-Out)
 
@@ -153,12 +153,12 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 | TEST-04 | Phase 7: Test Suite Execution | Complete |
 | TEST-05 | Phase 7: Test Suite Execution | Complete |
 | TEST-06 | Phase 7: Test Suite Execution | Complete |
-| DOC-01 | Phase 8: Documentation & Milestone Close | Pending |
-| DOC-02 | Phase 8: Documentation & Milestone Close | Pending |
-| DOC-03 | Phase 8: Documentation & Milestone Close | Pending |
-| DOC-04 | Phase 8: Documentation & Milestone Close | Pending |
-| DOC-05 | Phase 8: Documentation & Milestone Close | Pending |
-| DOC-06 | Phase 8: Documentation & Milestone Close | Pending |
+| DOC-01 | Phase 8: Documentation & Milestone Close | Complete |
+| DOC-02 | Phase 8: Documentation & Milestone Close | Complete |
+| DOC-03 | Phase 8: Documentation & Milestone Close | Complete |
+| DOC-04 | Phase 8: Documentation & Milestone Close | Complete |
+| DOC-05 | Phase 8: Documentation & Milestone Close | Complete |
+| DOC-06 | Phase 8: Documentation & Milestone Close | Complete |
 
 **Coverage:**
 - v1 (Milestone 1) requirements: 35 total (7 categories)
@@ -176,4 +176,4 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 
 ---
 *Requirements defined: 2026-02-08*
-*Last updated: 2026-02-08 after roadmap v2 (8-phase structure with parallelism)*
+*Last updated: 2026-02-09 -- Milestone 1 complete (35/35 requirements verified PASS)*

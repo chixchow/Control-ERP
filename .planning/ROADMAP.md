@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Financial Foundation** - Document GL/Ledger architecture, system accounts, and payment logic in the financial skill
 - [x] **Phase 6: Glossary Skill Creation** - Build control-erp-glossary with FLS business language and Control technical terminology
 - [x] **Phase 7: Test Suite Execution** - Execute all validation tests with formal scorecard proving accuracy against Control reports
-- [ ] **Phase 8: Documentation & Milestone Close** - Produce maintainability documentation and close the milestone
+- [x] **Phase 8: Documentation & Milestone Close** - Produce maintainability documentation and close the milestone
 
 ## Parallelism
 
@@ -154,9 +154,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Create skill architecture document (DOC-01 + DOC-03) and query pattern reference (DOC-02)
-- [ ] 08-02-PLAN.md — Create Crystal Reports catalog (DOC-04) and known gotchas document (DOC-05)
-- [ ] 08-03-PLAN.md — Create validation methodology (DOC-06), cross-check 35 requirements, close milestone
+- [x] 08-01-PLAN.md — Create skill architecture document (DOC-01 + DOC-03) and query pattern reference (DOC-02)
+- [x] 08-02-PLAN.md — Create Crystal Reports catalog (DOC-04) and known gotchas document (DOC-05)
+- [x] 08-03-PLAN.md — Create validation methodology (DOC-06), cross-check 35 requirements, close milestone
 
 ## Progress
 
@@ -172,4 +172,4 @@ Wave 1 (parallel): 1, 2, 3 -> Wave 2 (parallel): 4, 5 -> Wave 3 (parallel): 6, 7
 | 5. Financial Foundation | 2/2 | Complete | 2026-02-09 |
 | 6. Glossary Skill Creation | 1/1 | Complete | 2026-02-09 |
 | 7. Test Suite Execution | 2/2 | Complete | 2026-02-09 |
-| 8. Documentation & Milestone Close | 0/3 | Not started | - |
+| 8. Documentation & Milestone Close | 3/3 | Complete | 2026-02-09 |
