@@ -41,9 +41,9 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 
 ### Glossary
 
-- [ ] **GLOSS-01**: control-erp-glossary skill created with FLS-specific terminology mapping (business language → database entities)
-- [ ] **GLOSS-02**: Product line terminology documented (blanket, SEG, Fab Frame, DyeLux, etc.)
-- [ ] **GLOSS-03**: Control-specific terminology mapped (CHAPI, SSLIP, CFL, SQLBridge, ClassTypeID patterns)
+- [x] **GLOSS-01**: control-erp-glossary skill created with FLS-specific terminology mapping (business language → database entities)
+- [x] **GLOSS-02**: Product line terminology documented (blanket, SEG, Fab Frame, DyeLux, etc.)
+- [x] **GLOSS-03**: Control-specific terminology mapped (CHAPI, SSLIP, CFL, SQLBridge, ClassTypeID patterns)
 
 ### Test Suite & Validation
 
@@ -144,9 +144,9 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 | WIKI-03 | Phase 3: Wiki Knowledge Formalization | Complete |
 | WIKI-04 | Phase 3: Wiki Knowledge Formalization | Complete |
 | WIKI-05 | Phase 3: Wiki Knowledge Formalization | Complete |
-| GLOSS-01 | Phase 6: Glossary Skill Creation | Pending |
-| GLOSS-02 | Phase 6: Glossary Skill Creation | Pending |
-| GLOSS-03 | Phase 6: Glossary Skill Creation | Pending |
+| GLOSS-01 | Phase 6: Glossary Skill Creation | Complete |
+| GLOSS-02 | Phase 6: Glossary Skill Creation | Complete |
+| GLOSS-03 | Phase 6: Glossary Skill Creation | Complete |
 | TEST-01 | Phase 7: Test Suite Execution | Pending |
 | TEST-02 | Phase 7: Test Suite Execution | Pending |
 | TEST-03 | Phase 7: Test Suite Execution | Pending |
