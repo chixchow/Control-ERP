@@ -31,6 +31,40 @@ CREATE VIEW GL AS SELECT * FROM Ledger WHERE OffBalanceSheet = 0
 - `TransHeaderID` — linked order/bill (when applicable)
 - `ID` — sequential entry ID (GL ID in account registers)
 
+### Complete Ledger Field Reference
+
+The Ledger table has 53 columns total. Beyond the 5 key fields above, these are the most query-relevant fields:
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| EntryType | int | Entry category: NULL/0=unset, 1=Manual/Adjustments, 2=Order lifecycle (dominant), 3=Payment-related, 4=Credit adjustments, 5=Bill lifecycle |
+| Classification | int | Fine-grained event classification (49 values). 0=general, 100=sale events. Rarely needed for user queries |
+| OffBalanceSheet | bit | 0=on-balance sheet (in GL view), 1=off-balance sheet (filtered from GL view) |
+| DepositJournalID | int | Links payment GL entries to their deposit batch Journal |
+| Reconciled | bit | Whether entry has been bank-reconciled |
+| ReconciliationDateTime | datetime | When the entry was reconciled |
+| DivisionID | int | Division the entry belongs to (FK to Division) |
+| StationID | int | Production station for cost entries (FK to Station) |
+| PartID | int | Part/material for inventory entries (FK to Part) |
+| PayrollID | int | Payroll entry link (FK to Payroll) |
+| WarehouseID | int | Warehouse for inventory entries (FK to Warehouse) |
+| ClassTypeID | int | Almost always 8900 for all Ledger entries |
+
+For full schema, see `output/schemas/Ledger.md`.
+
+#### EntryType Reference
+
+| Value | Meaning | Typical Count |
+|-------|---------|--------------|
+| NULL | Unset/legacy | varies |
+| 1 | Manual journal entries (bank fees, loan payments) | ~2K |
+| 2 | Order lifecycle entries | ~2.3M (dominant) |
+| 3 | Payment-related entries | ~397K |
+| 4 | Credit adjustments | ~30 |
+| 5 | Bill lifecycle entries | ~743 |
+
+**Confidence: MEDIUM** — Values inferred from Description pattern correlation, not official documentation.
+
 ### Sign Conventions
 - **Revenue accounts:** Negative amounts (credits). Use `SUM(-Amount)` for positive revenue.
 - **Expense/COGS accounts:** Positive amounts (debits). Use `SUM(Amount)` for expenses.
@@ -589,6 +623,49 @@ Gross margin ~82% in recent periods.
 **GL-based** (this skill): Revenue from Ledger entries hitting GLAccount 4000/4001 accounts. Best for financial reporting, P&L, trial balance. Matches accountant's view.
 
 Both should reconcile for the same period. Minor timing differences possible due to batch posting.
+
+---
+
+## CLOSEOUT — PERIOD LOCKING
+
+The Closeout table locks GL periods to prevent backdated entries. The most recent Closeout of each type determines the locked period boundary. GL entries before the last closeout date cannot be modified without reopening the period.
+
+### Key Fields
+- `CloseoutType` — type of closeout (see reference below)
+- `ClassTypeID` — always 8911 for all Closeout records
+- `StartDate` / `EndDate` — period being closed
+- `ClosedDate` — when the closeout was performed
+- `ClosedByID` — employee who performed the closeout
+- `IsActive` — whether this closeout is active
+
+### CloseoutType Reference
+
+| CloseoutType | Name | Purpose |
+|-------------|------|---------|
+| 1 | Daily | Daily business close |
+| 2 | Monthly | Monthly accounting close |
+| 3 | Yearly | Yearly fiscal close |
+| 5 | Export | GL export for external accounting |
+| 6 | Credit Card Settlement | CC batch settlement |
+
+### Query Example: Last Closeout Dates
+
+```sql
+-- Last closeout dates by type
+SELECT CloseoutType,
+    CASE CloseoutType
+        WHEN 1 THEN 'Daily'
+        WHEN 2 THEN 'Monthly'
+        WHEN 3 THEN 'Yearly'
+        WHEN 5 THEN 'Export'
+        WHEN 6 THEN 'CC Settlement'
+    END AS Name,
+    MAX(EndDate) AS LastClosedThrough
+FROM Closeout
+WHERE IsActive = 1
+GROUP BY CloseoutType
+ORDER BY CloseoutType
+```
 
 ---
 
