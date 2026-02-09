@@ -442,7 +442,7 @@ WHERE j.AccountID = @AccountID
 ORDER BY j.CompletedDateTime DESC
 ```
 
-**Note**: Journal ClassTypeID for ContactActivity entries is [TBD via discovery query]. The above query uses the split table join pattern (Journal.ID = ContactActivity.ID) which is confirmed by wiki documentation.
+**Note**: The above query uses the split table join pattern (Journal.ID = ContactActivity.ID) which is confirmed by wiki documentation. No ClassTypeID filter is needed -- the JOIN to ContactActivity implicitly filters to contact activities only.
 
 **Natural Language Triggers**:
 - "last contact with [customer]"
@@ -647,9 +647,9 @@ Each metric scored 1-5 using NTILE(5) quintile bucketing. Combined scores map to
 ),
 RFMScores AS (
     SELECT *,
-        NTILE(5) OVER (ORDER BY Recency ASC) AS R_Score,  -- Lower recency = higher score
-        NTILE(5) OVER (ORDER BY Frequency DESC) AS F_Score,
-        NTILE(5) OVER (ORDER BY Monetary DESC) AS M_Score
+        NTILE(5) OVER (ORDER BY Recency DESC) AS R_Score,  -- Low recency (most recent) → high score
+        NTILE(5) OVER (ORDER BY Frequency ASC) AS F_Score,  -- High frequency → high score
+        NTILE(5) OVER (ORDER BY Monetary ASC) AS M_Score  -- High monetary → high score
     FROM CustomerMetrics
 )
 SELECT
@@ -1064,7 +1064,7 @@ Contacts at Flash Apparel:
 
 ### To Reference Files
 
-- **references/customer-analysis.md**: Full RFM scoring query, Pareto analysis, personalized dormancy detection algorithm (extracted from main file when exceeding 1,000 lines)
+None -- all content in main skill file (1,075 lines, below extraction threshold).
 
 ---
 
@@ -1072,4 +1072,4 @@ Contacts at Flash Apparel:
 *Plan: 10-01 (CUST-01 - Customer Profile Lookup)*
 *Extended: 2026-02-09*
 *Plan: 10-02 (CUST-02, CUST-03 - Customer Ranking, Segmentation, At-Risk Detection)*
-*Line count: 1,073 lines (main file), ~[TBD] (references)*
+*Line count: 1,075 lines (main file, no references extraction needed)*
