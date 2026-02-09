@@ -736,6 +736,97 @@ GROUP BY
 - Bill numbering: 30xxx range (separate from order 133xxx range)
 - Vendor terms: `Account.VendorPaymentTermsID`
 
+### AP Detail with Vendor Breakdown
+
+Mirrors the AR Detail format but for vendor bills. AP ages from DueDate (vendor payment deadline) -- this is the OPPOSITE of AR which uses SaleDate.
+
+**Key difference: AP uses DueDate, AR uses SaleDate.** DueDate on Type 8 bills is the vendor's payment deadline. DueDate on Type 1 orders is the production/shipping deadline (irrelevant for aging). This is the most important distinction in AR vs AP aging.
+
+#### Full AP Detail by Vendor
+```sql
+-- AP Detail with vendor breakdown and aging buckets
+-- NOTE: AP ages from DueDate (vendor payment deadline), NOT SaleDate
+SELECT
+    a.CompanyName AS Vendor,
+    vpt.TermsName AS VendorTerms,
+    th.BillNumber,
+    th.DueDate,
+    th.Description,
+    th.TotalPrice AS BillAmount,
+    th.BalanceDue,
+    -- AP aging from DueDate (Current = not yet due)
+    CASE WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) <= 0
+         THEN th.BalanceDue ELSE 0 END AS Current,
+    CASE WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) BETWEEN 1 AND 30
+         THEN th.BalanceDue ELSE 0 END AS Days_1_30,
+    CASE WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) BETWEEN 31 AND 60
+         THEN th.BalanceDue ELSE 0 END AS Days_31_60,
+    CASE WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) BETWEEN 61 AND 90
+         THEN th.BalanceDue ELSE 0 END AS Days_61_90,
+    CASE WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) > 90
+         THEN th.BalanceDue ELSE 0 END AS Days_Over_90
+FROM TransHeader th
+INNER JOIN Account a ON th.AccountID = a.ID
+LEFT JOIN PaymentTerms vpt ON a.VendorPaymentTermsID = vpt.ID
+WHERE th.TransactionType = 8
+    AND th.IsActive = 1
+    AND th.BalanceDue > 0
+    AND th.StatusID != 9  -- exclude voided
+ORDER BY a.CompanyName, th.DueDate
+```
+
+#### AP Summary by Vendor
+```sql
+-- Summary row per vendor with aging bucket totals
+-- Use when user asks "AP by vendor" or "who do we owe the most"
+SELECT
+    a.CompanyName AS Vendor,
+    COUNT(*) AS OpenBills,
+    SUM(th.BalanceDue) AS TotalAP,
+    SUM(CASE WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) <= 0 THEN th.BalanceDue ELSE 0 END) AS Current,
+    SUM(CASE WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) BETWEEN 1 AND 30 THEN th.BalanceDue ELSE 0 END) AS Days_1_30,
+    SUM(CASE WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) BETWEEN 31 AND 60 THEN th.BalanceDue ELSE 0 END) AS Days_31_60,
+    SUM(CASE WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) BETWEEN 61 AND 90 THEN th.BalanceDue ELSE 0 END) AS Days_61_90,
+    SUM(CASE WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) > 90 THEN th.BalanceDue ELSE 0 END) AS Days_Over_90
+FROM TransHeader th
+INNER JOIN Account a ON th.AccountID = a.ID
+WHERE th.TransactionType = 8 AND th.IsActive = 1 AND th.BalanceDue > 0 AND th.StatusID != 9
+GROUP BY a.CompanyName
+ORDER BY TotalAP DESC
+```
+
+#### Vendor Payment History
+```sql
+-- When user asks "payment history for [vendor]" or "payments to [vendor]"
+-- Shows all bill payments made to a specific vendor
+SELECT
+    p.PaymentDate,
+    th.BillNumber,
+    th.Description,
+    j.DetailAmount AS PaymentAmount,
+    CASE p.TenderType
+        WHEN 0 THEN 'Cash'
+        WHEN 1 THEN 'Check'
+        WHEN 2 THEN 'Credit Card'
+        WHEN 5 THEN 'ACH'
+        WHEN 7 THEN 'Wire'
+        ELSE 'Other'
+    END AS PaymentMethod,
+    p.DisplayNumber AS Reference
+FROM Payment p
+INNER JOIN Journal j ON p.ID = j.ID
+INNER JOIN TransHeader th ON j.TransactionID = th.ID
+INNER JOIN Account a ON th.AccountID = a.ID
+WHERE p.ClassTypeID = 20009  -- Bill Payment
+    AND p.IsActive = 1
+    AND j.IsVoided = 0
+    AND th.TransactionType = 8
+    AND a.CompanyName LIKE '%' + @VendorName + '%'
+ORDER BY p.PaymentDate DESC
+```
+
+**Vendor credits:** `Account.VendorCreditBalance` tracks outstanding vendor credits. When a vendor issues a credit, it reduces the effective AP balance. Check this field when reporting total AP exposure for a vendor.
+
 ---
 
 ## P&L FROM GL
@@ -854,6 +945,9 @@ Gross margin ~82% in recent periods.
 | "AR summary by customer" | AR Summary by Customer |
 | "What do we owe?" / "AP" / "open bills" | AP Snapshot |
 | "AP aging" / "what's overdue" | AP Aging |
+| "AP detail" / "AP by vendor" / "what do we owe" | AP Detail with Vendor Breakdown |
+| "AP for [vendor]" / "bills for [vendor]" | AP Detail filtered by vendor (LIKE on CompanyName) |
+| "vendor payment history" / "payments to [vendor]" | Vendor Payment History |
 | "P&L" / "profit and loss" / "income statement" | P&L Summary or Full P&L |
 | "Revenue by product" (GL-based) | Revenue by Product Line |
 | "What's our gross margin?" | P&L Summary → GrossProfit/TotalRevenue |
