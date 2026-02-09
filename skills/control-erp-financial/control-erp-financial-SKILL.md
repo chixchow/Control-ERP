@@ -1,0 +1,613 @@
+---
+name: control-erp-financial
+description: Query FLS Banners financial data from Control ERP including GL/Ledger transactions, Accounts Receivable, Accounts Payable, P&L reporting, payment tracking, and balance sheet queries. Use when the user asks about AR, AP, aging, payments, invoices, bills, GL entries, profit & loss, cash position, expenses, COGS, or any accounting/financial question. Depends on control-erp-core for business rules.
+---
+
+# Control ERP Financial — GL, AR, AP & Payment Intelligence
+
+**Depends on:** `control-erp-core` (always read core first for business rules)
+
+---
+
+## GL / LEDGER ARCHITECTURE
+
+Control uses a **Ledger table** for all general ledger entries. The commonly referenced "GL" is actually a VIEW:
+
+```sql
+-- GL is a filtered view of Ledger
+CREATE VIEW GL AS SELECT * FROM Ledger WHERE OffBalanceSheet = 0
+```
+
+- **Ledger** = ALL entries (on-balance + off-balance sheet)
+- **GL** (view) = Financial reporting entries only (excludes off-balance sheet)
+- **Off-balance sheet entries** = cost tracking for parts expensed at purchase (prevents double-counting)
+
+**Always use `GL` view for financial queries** unless you specifically need off-balance sheet data.
+
+### Key GL/Ledger Fields
+- `GLAccountID` → `GLAccount.ID` (NodeID) — which account
+- `Amount` — positive = debit, negative = credit
+- `EntryDateTime` — when posted
+- `TransHeaderID` — linked order/bill (when applicable)
+- `ID` — sequential entry ID (GL ID in account registers)
+
+### Sign Conventions
+- **Revenue accounts:** Negative amounts (credits). Use `SUM(-Amount)` for positive revenue.
+- **Expense/COGS accounts:** Positive amounts (debits). Use `SUM(Amount)` for expenses.
+- **Asset accounts:** Positive = increase (debit), negative = decrease (credit)
+- **Liability accounts:** Negative = increase (credit), positive = decrease (debit)
+
+---
+
+## GLACCOUNT — CHART OF ACCOUNTS
+
+The GLAccount table stores all accounts in a hierarchical tree structure.
+
+### Key Fields
+- `ID` (NodeID) — unique identifier, used as `GLAccountID` in Ledger
+- `AccountName` — display name
+- `ClassTypeID` — 8000 = category/folder, 8001 = leaf account
+- `AccountGroupID` — parent node for hierarchy
+- `GLClassificationType` — account type classification
+- `ExportAccountNumber` — external accounting number
+- `IsActive` — active flag
+
+### GLClassificationType Reference
+
+| Code | Category | Description |
+|------|----------|-------------|
+| **Balance Sheet** | | |
+| 1000 | Cash/Bank | Bank accounts, cash on hand |
+| 1002 | Other Current Assets | AR, presale assets, transfers |
+| 1003 | Inventory | Raw materials, finished goods |
+| 1004 | Fixed/Other Assets | Equipment, vehicles, notes receivable |
+| 1005 | Other Assets | Deposits, NR non-current |
+| 1007 | Undeposited Funds | Payment gateway holding accounts |
+| 2000 | Accounts Payable | AP, AP contra |
+| 2001 | Credit Cards | Company credit card accounts |
+| 2002 | Current Liabilities | Prepayments, payroll, presale liabilities |
+| 2003 | Long-term Liabilities | Notes payable, loans |
+| 2005 | Tax Liabilities | Sales tax (WI, Door County) |
+| 3000 | Equity | Common stock, retained earnings |
+| **Income Statement** | | |
+| 4000 | Product Income | ~51 revenue accounts by product line |
+| 4001 | Other Income | Interest, freight reimbursement, misc |
+| 5001 | COGS | Purchases, freight, cost of goods |
+| 5002 | Operating Expenses | ~92 accounts (payroll, insurance, rent, etc.) |
+| 8000 | Category | Folder/grouping node — not a real account |
+
+### Critical System Account NodeIDs
+
+These are the accounts referenced in GL transaction flows. Memorize these:
+
+| NodeID | Account | Normal Balance |
+|--------|---------|---------------|
+| 11 | WIP | Debit (asset) |
+| 12 | Built | Debit (asset) |
+| 14 | Accounts Receivable | Debit (asset) |
+| 21 | Orders Due | Credit (liability) |
+| 22 | Accounts Payable | Credit (liability) |
+| 23 | Customer Credit Balance | Credit (liability) |
+| 24 | Order Prepayments | Credit (liability) |
+| 90 | Cash-Associated Bank-Checking | Debit (asset) |
+| 92 | Undeposited MCVisa | Debit (asset) |
+| 10137 | Undeposited Amex | Debit (asset) |
+| 10412 | Cash-MM (Money Market) | Debit (asset) |
+| 10414 | Inventory | Debit (asset) |
+
+### Supporting System Accounts
+
+These accounts support the core GL lifecycle and appear in specific workflow stages:
+
+| NodeID | Account | Classification | Purpose |
+|--------|---------|---------------|---------|
+| 15 | Direct Costs from Bills | 1002 (Current Asset) | Intermediary for bill costs assigned to orders |
+| 25 | Vendor Credit | 2000 (AP) | Vendor credit balances |
+| 34 | Cost Of Built - FGI | 1002 (Current Asset) | Holds costs during Built status before sale |
+| 52 | Credit Given | 5002 (Expense) | Customer credit adjustments expense |
+| 60 | Unclassified Inventory | 1003 (Inventory) | Off-balance sheet cost tracking for expensed parts |
+| 61 | Unclassified Expense | 5002 (Expense) | Off-balance sheet expense tracking |
+| 93 | Undeposited Checks | 1007 (Undeposited Funds) | Check deposits pending |
+| 543 | Undeposited Discover | 1007 (Undeposited Funds) | Discover CC deposits pending |
+| 10528 | Undeposited Authorize.net | 1007 (Undeposited Funds) | Online CC deposits pending |
+| 10530 | Undeposited PayPal | 1007 (Undeposited Funds) | PayPal deposits pending |
+| 10531 | Undeposited Shopify | 1007 (Undeposited Funds) | Shopify deposits pending |
+
+### Complete Undeposited Fund Accounts
+
+All accounts with GLClassificationType = 1007 (payment gateway holding accounts):
+
+| NodeID | Account | Status |
+|--------|---------|--------|
+| 91 | Undeposited Cash | Active |
+| 92 | Undeposited MCVisa | Active |
+| 93 | Undeposited Checks | Active |
+| 543 | Undeposited Discover | Active |
+| 10137 | Undeposited Amex | Active |
+| 10147 | Undeposited Discover old | Active |
+| 10528 | Undeposited Authorize.net | Active |
+| 10530 | Undeposited PayPal | Active |
+| 10531 | Undeposited Shopify | Active |
+| 10522 | ZT Undeposited MCVisa | Legacy (ZoomTex) |
+| 10523 | ZT Undeposited Amex | Legacy (ZoomTex) |
+| 10524 | ZT Undeposited Checks | Legacy (ZoomTex) |
+| 10525 | ZT Undeposited Cash | Legacy (ZoomTex) |
+
+### Revenue Account NodeIDs (GLClassificationType 4000)
+
+**Core Fabric/Dye Sub Products:**
+
+| NodeID | Account |
+|--------|---------|
+| 10116 | DyeSub |
+| 10120 | DyeSub Table Covers |
+| 10126 | Dyelux Flag |
+| 10127 | Dyelux Golf Flag |
+| 10258 | Feather Flags |
+| 10533 | Dyesub Displays |
+| 10534 | SEG |
+| 10535 | Printed Fabric |
+| 10537 | Printed Paper |
+| 10132 | Solvent |
+
+**Displays & Accessories:**
+
+| NodeID | Account |
+|--------|---------|
+| 10257 | Pop-Up Tents |
+| 10122 | Carry Bags |
+| 10123 | Tri Fold Displays |
+| 10124 | Roll Up Banners |
+| 10125 | Banner Stand |
+| 10039 | Stakes and Posts |
+| 10128 | Golf Pin |
+| 10129 | Putting Cup |
+| 10130 | Flag Swivel |
+
+**Screen Printing & Garments:**
+
+| NodeID | Account |
+|--------|---------|
+| 6053 | Screenprinting |
+| 10086 | SP Banners |
+| 10114 | SP Flags |
+| 10115 | SP Table Covers |
+| 10099 | Embroidery |
+| 10100 | Screenprint (garment) |
+
+**Subcontract:**
+
+| NodeID | Account |
+|--------|---------|
+| 10119 | SubCon Flag |
+| 10037 | SubCon Sublimation |
+| 10118 | SubCon Vinyl |
+| 10131 | SubCon Table Cover |
+| 10255 | Sub Con Screenprint |
+
+**Services, Shipping & Adjustments:**
+
+| NodeID | Account |
+|--------|---------|
+| 400 | Shipping Sales |
+| 10038 | Shipping |
+| 6067 | Service |
+| 10040 | Services |
+| 10036 | Installation |
+| 6029 | Outsource |
+| 10317 | Discounts Given (contra) |
+| 53 | Credit Memo |
+| 10440 | Write Off |
+
+### COGS Account NodeIDs (GLClassificationType 5001)
+
+| NodeID | Account |
+|--------|---------|
+| 10178 | Cost of Goods Sold |
+| 10180 | Purchases |
+| 10182 | Contract Purchases |
+| 10183 | Credit Card Charge Purchases |
+| 10184 | Dye Sub Purchases |
+| 10185 | Fabric Purchases |
+| 10186 | Garment Purchases |
+| 10527 | Subcontract Purchases |
+| 10493 | Freight (COGS) |
+
+---
+
+## GL TRANSACTION FLOWS
+
+### Order Lifecycle — GL Entries
+
+**Stage 1: New Order Created**
+```
+Debit  WIP (NodeID 11)          $order_total
+Credit Orders Due (NodeID 21)   $order_total
+```
+
+**Stage 2: Deposit/Prepayment Received**
+```
+Debit  Undeposited MCVisa (92) or Undeposited Cash (91) or Undeposited Checks (93)   $payment
+Credit Order Prepayments (NodeID 24)                                                 $payment
+```
+
+**Stage 3a: Sale — Prepaid Order** (payment received before sale)
+```
+-- Reverse presale entries
+Debit  Orders Due (21)              $order_total
+Credit WIP (11)                     $order_total
+-- Apply prepayment to revenue
+Debit  Order Prepayments (24)       $prepaid_amount
+Credit [Product Revenue Account]    $product_revenue  (multiple lines by product)
+Credit [Shipping Account]           $shipping
+-- COGS recognition
+Debit  Cost of Goods Sold           $cogs
+Credit Inventory (10414)            $cogs
+```
+
+**Stage 3b: Sale — Unpaid/Credit Order** (payment expected after sale)
+```
+-- Same as 3a, except:
+Debit  Accounts Receivable (14)     $balance_due
+-- instead of Order Prepayments
+```
+
+### Bill Lifecycle — GL Entries
+
+**Bill Created:**
+```
+Debit  Freight / COGS / Expense     $line_amounts
+Credit Accounts Payable (22)        $bill_total
+```
+
+**Bill Paid:**
+```
+Debit  Accounts Payable (22)                  $payment
+Credit Cash-Associated Bank-Checking (90)     $payment
+```
+
+---
+
+## PAYMENT POSTING PATTERNS
+
+**Critical rule: Orders flow through ONE GL account path, not both.**
+
+### Path A: Prepaid Orders → Order Prepayments (NodeID 24)
+
+| Step | GL Entry | Register Description |
+|------|----------|---------------------|
+| Payment received | Credit Order Prepayments | "Order Payment ({Type} {Amount}) for #{Order}" |
+| Order sold | Debit Order Prepayments | "Order Status Marked Sale" |
+
+~70% of orders follow this path. Payment types: Check, Cash/ACH, Capture (CC auth).
+
+### Path B: Credit/AR Orders → Accounts Receivable (NodeID 14)
+
+| Step | GL Entry | Register Description |
+|------|----------|---------------------|
+| Order sold | Debit AR | "Order Status Marked Sale" |
+| Payment received | Credit AR | "Order Payment ({Type} {Amount}) for #{Order}" |
+
+~30% of orders follow this path. Mostly CC captures charged after shipment.
+
+### Payment Description Format in GL
+```
+Order Payment ({Type} {Amount}) for #{OrderNumber} - {CompanyName}
+```
+Types: `Check`, `Cash`, `Capture` (CC auth), `MC/Visa`, `Amex`, `Discover`,
+`Credit Applied` (customer credit), `Inksoft`, `Shopify`, `PayPal`
+
+### Other GL Register Entries
+- "Order Edited" — price adjustments create GL corrections
+- "Voided Payment on Order NNNNN" — payment reversal
+- "Finance Charge" — late fees on AR accounts
+
+---
+
+## ACCOUNTS RECEIVABLE
+
+### AR = TransHeader-Based (Not GL-Based)
+
+AR reporting uses TransHeader fields, NOT the GL Ledger. The AR report includes WIP/Built orders for visibility, which haven't posted to the GL AR account yet.
+
+**Key fields:** `BalanceDue`, `PaymentTotal`, `SaleDate`, `StatusID`
+
+**DueDate WARNING:** `TransHeader.DueDate` = **production/shipping deadline**, NOT payment due date. Payment due date is calculated at runtime as `SaleDate + PaymentTerms.GracePeriod`.
+
+### AR Snapshot
+```sql
+SELECT
+    a.CompanyName,
+    th.OrderNumber,
+    th.SaleDate,
+    th.BalanceDue,
+    th.TotalPrice,
+    th.PaymentTotal,
+    pt.TermsName,
+    pt.GracePeriod
+FROM TransHeader th
+INNER JOIN Account a ON th.AccountID = a.ID
+LEFT JOIN PaymentTerms pt ON a.PaymentTermsID = pt.ID
+WHERE th.TransactionType = 1
+    AND th.IsActive = 1
+    AND th.BalanceDue > 0
+    AND th.StatusID != 9  -- exclude voided
+ORDER BY th.BalanceDue DESC
+```
+
+### AR Aging Buckets
+```sql
+SELECT
+    CASE
+        WHEN th.SaleDate IS NULL THEN 'WIP/Built'
+        WHEN DATEDIFF(DAY, th.SaleDate, GETDATE()) <= 30 THEN '0-30 days'
+        WHEN DATEDIFF(DAY, th.SaleDate, GETDATE()) <= 60 THEN '31-60 days'
+        WHEN DATEDIFF(DAY, th.SaleDate, GETDATE()) <= 90 THEN '61-90 days'
+        ELSE '90+ days'
+    END AS AgingBucket,
+    COUNT(*) AS Invoices,
+    SUM(th.BalanceDue) AS ARBalance
+FROM TransHeader th
+WHERE th.TransactionType = 1
+    AND th.IsActive = 1
+    AND th.BalanceDue > 0
+    AND th.StatusID != 9
+GROUP BY
+    CASE
+        WHEN th.SaleDate IS NULL THEN 'WIP/Built'
+        WHEN DATEDIFF(DAY, th.SaleDate, GETDATE()) <= 30 THEN '0-30 days'
+        WHEN DATEDIFF(DAY, th.SaleDate, GETDATE()) <= 60 THEN '31-60 days'
+        WHEN DATEDIFF(DAY, th.SaleDate, GETDATE()) <= 90 THEN '61-90 days'
+        ELSE '90+ days'
+    END
+```
+
+### AR by Payment Terms
+```sql
+SELECT
+    pt.TermsName,
+    COUNT(*) AS OpenInvoices,
+    SUM(th.BalanceDue) AS ARBalance
+FROM TransHeader th
+INNER JOIN Account a ON th.AccountID = a.ID
+LEFT JOIN PaymentTerms pt ON a.PaymentTermsID = pt.ID
+WHERE th.TransactionType = 1
+    AND th.IsActive = 1
+    AND th.BalanceDue > 0
+    AND th.StatusID != 9
+GROUP BY pt.TermsName
+ORDER BY ARBalance DESC
+```
+
+### AR Context (Validated 2026-02-07)
+- Total AR: ~$80,899 (119 invoices, 30 customers)
+- 93% current (0-30 days)
+- Net 30 = 57% of AR balance, 68% of invoices
+- FLS is predominantly prepaid — AR is small relative to revenue
+- Credit Card terms ($19.4K) = current invoices awaiting charge, not failed transactions
+- Charge account customers marked by `Account.HasCreditAccount = 1` (shown as `*` prefix in AR report)
+
+### Payment Terms
+- 21 active terms in `PaymentTerms` table
+- Key terms: Net 30 (ID 2), Due Upon Receipt, Net 45, 50%/50% Net 30 (ID 1009), Credit Card, Cash Customer, Net 10, Net 15
+- Fields: `TermsName`, `GracePeriod`, `InterestRate`, `FeesBasedOnSaleDate`
+- Customer terms: `Account.PaymentTermsID`
+- Order-level override: `TransHeader.POPaymentTermsID`
+
+---
+
+## ACCOUNTS PAYABLE
+
+### AP = TransHeader Type 8 (Bills)
+
+AP uses the same TransHeader table with `TransactionType = 8`.
+
+**Bill StatusIDs:** 4 = Closed, 6 = Open, 9 = Voided
+
+### AP Snapshot
+```sql
+SELECT
+    a.CompanyName AS Vendor,
+    th.OrderNumber AS BillNumber,
+    th.BalanceDue,
+    th.TotalPrice AS BillAmount,
+    th.DueDate
+FROM TransHeader th
+INNER JOIN Account a ON th.AccountID = a.ID
+WHERE th.TransactionType = 8
+    AND th.IsActive = 1
+    AND th.BalanceDue > 0
+    AND th.StatusID != 9
+ORDER BY th.BalanceDue DESC
+```
+
+### AP Aging
+```sql
+SELECT
+    CASE
+        WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) <= 0 THEN 'Current'
+        WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) <= 30 THEN '0-30 days'
+        WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) <= 60 THEN '31-60 days'
+        WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) <= 90 THEN '61-90 days'
+        ELSE '90+ days'
+    END AS AgingBucket,
+    COUNT(*) AS Bills,
+    SUM(th.BalanceDue) AS APBalance
+FROM TransHeader th
+WHERE th.TransactionType = 8
+    AND th.IsActive = 1
+    AND th.BalanceDue > 0
+    AND th.StatusID != 9
+GROUP BY
+    CASE
+        WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) <= 0 THEN 'Current'
+        WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) <= 30 THEN '0-30 days'
+        WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) <= 60 THEN '31-60 days'
+        WHEN DATEDIFF(DAY, th.DueDate, GETDATE()) <= 90 THEN '61-90 days'
+        ELSE '90+ days'
+    END
+```
+
+**AP vs AR aging difference:** AP ages from `TransHeader.DueDate` (vendor payment deadline). AR ages from `SaleDate` (invoice date). DueDate has different meanings by transaction type.
+
+### AP Context (Validated 2026-02-07)
+- Total AP: ~$125,319 (66 bills, 35 vendors)
+- AP is healthy — 96% current excluding one vendor
+- Bill numbering: 30xxx range (separate from order 133xxx range)
+- Vendor terms: `Account.VendorPaymentTermsID`
+
+---
+
+## P&L FROM GL
+
+### Revenue by Product Line
+```sql
+SELECT
+    ga.AccountName AS ProductLine,
+    SUM(-l.Amount) AS Revenue
+FROM GL l
+INNER JOIN GLAccount ga ON l.GLAccountID = ga.ID
+WHERE ga.GLClassificationType = 4000
+    AND l.EntryDateTime BETWEEN @StartDate AND @EndDate
+GROUP BY ga.AccountName
+ORDER BY Revenue DESC
+```
+
+### Full P&L
+```sql
+SELECT
+    CASE ga.GLClassificationType
+        WHEN 4000 THEN '1-Product Revenue'
+        WHEN 4001 THEN '2-Other Income'
+        WHEN 5001 THEN '3-COGS'
+        WHEN 5002 THEN '4-Operating Expenses'
+    END AS Category,
+    ga.AccountName,
+    CASE
+        WHEN ga.GLClassificationType IN (4000, 4001) THEN SUM(-l.Amount)
+        ELSE SUM(l.Amount)
+    END AS Amount
+FROM GL l
+INNER JOIN GLAccount ga ON l.GLAccountID = ga.ID
+WHERE ga.GLClassificationType IN (4000, 4001, 5001, 5002)
+    AND l.EntryDateTime BETWEEN @StartDate AND @EndDate
+GROUP BY ga.GLClassificationType, ga.AccountName
+HAVING SUM(l.Amount) != 0
+ORDER BY Category, Amount DESC
+```
+
+### P&L Summary
+```sql
+SELECT
+    SUM(CASE WHEN ga.GLClassificationType = 4000 THEN -l.Amount ELSE 0 END) AS ProductRevenue,
+    SUM(CASE WHEN ga.GLClassificationType = 4001 THEN -l.Amount ELSE 0 END) AS OtherIncome,
+    SUM(CASE WHEN ga.GLClassificationType IN (4000, 4001) THEN -l.Amount ELSE 0 END) AS TotalRevenue,
+    SUM(CASE WHEN ga.GLClassificationType = 5001 THEN l.Amount ELSE 0 END) AS COGS,
+    SUM(CASE WHEN ga.GLClassificationType IN (4000, 4001) THEN -l.Amount ELSE 0 END)
+        - SUM(CASE WHEN ga.GLClassificationType = 5001 THEN l.Amount ELSE 0 END) AS GrossProfit,
+    SUM(CASE WHEN ga.GLClassificationType = 5002 THEN l.Amount ELSE 0 END) AS OperatingExpenses,
+    SUM(CASE WHEN ga.GLClassificationType IN (4000, 4001) THEN -l.Amount ELSE 0 END)
+        - SUM(CASE WHEN ga.GLClassificationType IN (5001, 5002) THEN l.Amount ELSE 0 END) AS NetIncome
+FROM GL l
+INNER JOIN GLAccount ga ON l.GLAccountID = ga.ID
+WHERE ga.GLClassificationType IN (4000, 4001, 5001, 5002)
+    AND l.EntryDateTime BETWEEN @StartDate AND @EndDate
+```
+
+### Balance Sheet Key Accounts
+```sql
+SELECT
+    ga.AccountName,
+    ga.GLClassificationType,
+    SUM(l.Amount) AS Balance
+FROM GL l
+INNER JOIN GLAccount ga ON l.GLAccountID = ga.ID
+WHERE ga.ID IN (
+    90,     -- Cash-Associated Bank-Checking
+    10412,  -- Cash-MM
+    14,     -- Accounts Receivable
+    10414,  -- Inventory
+    11,     -- WIP
+    22,     -- Accounts Payable
+    24,     -- Order Prepayments
+    21      -- Orders Due
+)
+    AND l.EntryDateTime <= @AsOfDate
+GROUP BY ga.AccountName, ga.GLClassificationType
+```
+
+---
+
+## ALL-TIME REVENUE CONTEXT
+
+Cumulative revenue since inception: **$62.45M**
+
+| Product | All-Time Revenue | % |
+|---------|-----------------|---|
+| DyeSub Table Covers | $17.54M | 28.1% |
+| DyeSub | $9.45M | 15.1% |
+| Dyelux Flag | $7.32M | 11.7% |
+| SP Table Covers | $4.97M | 8.0% |
+| Screenprint (garment) | $4.74M | 7.6% |
+| Shipping | $2.73M | 4.4% |
+| Banner Stand | $2.23M | 3.6% |
+| SP Banners | $2.18M | 3.5% |
+| Embroidery | $2.06M | 3.3% |
+| Services | $1.65M | 2.6% |
+| Feather Flags | $1.59M | 2.6% |
+| Solvent | $1.45M | 2.3% |
+
+Top 3 products = 55% of all-time revenue. Dye sublimation printing = ~57% overall.
+Gross margin ~82% in recent periods.
+
+---
+
+## NATURAL LANGUAGE INTERPRETATION
+
+| User Says | Action |
+|-----------|--------|
+| "What's our AR?" / "open invoices" | AR Snapshot query |
+| "AR aging" / "past due invoices" | AR Aging Buckets |
+| "AR by payment terms" | AR by Payment Terms |
+| "What do we owe?" / "AP" / "open bills" | AP Snapshot |
+| "AP aging" / "what's overdue" | AP Aging |
+| "P&L" / "profit and loss" / "income statement" | P&L Summary or Full P&L |
+| "Revenue by product" (GL-based) | Revenue by Product Line |
+| "What's our gross margin?" | P&L Summary → GrossProfit/TotalRevenue |
+| "Cash position" / "how much cash" | Balance Sheet Key Accounts (cash nodes) |
+| "Expenses breakdown" | Full P&L filtered to GLClass 5002 |
+| "COGS" / "cost of goods" | Full P&L filtered to GLClass 5001 |
+| "Inventory value" | Balance Sheet → NodeID 10414 |
+| "WIP balance" / "orders in production value" | Balance Sheet → NodeID 11 |
+| "How did [customer] pay?" / "payment history" | GL register query on Order Prepayments or AR |
+| "GL entries for order #NNNNN" | Ledger WHERE TransHeaderID = (order's ID) |
+
+### Two Revenue Reporting Approaches
+
+**TransHeader-based** (sales skill): Revenue from `SubTotalPrice` on orders. Best for product-level drill-down via TransDetail/TransDetailParam variables. Matches "Sales by Product" report.
+
+**GL-based** (this skill): Revenue from Ledger entries hitting GLAccount 4000/4001 accounts. Best for financial reporting, P&L, trial balance. Matches accountant's view.
+
+Both should reconcile for the same period. Minor timing differences possible due to batch posting.
+
+---
+
+## IMPORTANT CAVEATS
+
+1. **GL view vs Ledger table:** Always use `GL` view for financial queries. Only use `Ledger` directly if you need off-balance sheet entries.
+
+2. **DueDate means different things:** On Type 1 orders = production/ship date. On Type 8 bills = vendor payment deadline. Never use Type 1 DueDate for AR aging.
+
+3. **AR includes WIP/Built:** The AR report includes orders not yet sold (StatusID 1/2) for visibility. GL AR balance will be lower than the AR report total because WIP/Built haven't posted to the AR GL account yet.
+
+4. **Payment path is mutually exclusive:** Prepaid orders only touch Order Prepayments (24). Credit orders only touch AR (14). Only ~0.3% of orders appear in both (partial prepay edge cases).
+
+5. **Batch posting:** Sales often process in batches (observed "3:59 PM" timestamps). GL entries may not reflect real-time status changes.
+
+6. **ZoomTex accounts are legacy.** NodeIDs 10522-10525 (ZT Undeposited *) have historical entries but the division is defunct. Exclude from active reporting.
+
+7. **Payment/Journal split table:** Payment.ID = Journal.ID. The Journal table tracks all system events (ActivityType: 1=Created, 7=Order Marked Sale, 8=Closed, 9=Voided). Payment adds financial details (Amount, BankAccountID, PaymentMethodID).
+
+---
+
+*Financial queries validated against FLS Banners' AR report ($80,899), AP report ($125,319), GL account registers, and Trial Balance export (January 2026). All NodeIDs confirmed from GL SQL Export and modified Trial Balance.*
