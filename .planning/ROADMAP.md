@@ -109,6 +109,11 @@ Plans:
 - FLS warehouse configuration needs live database discovery before writing query templates.
 
 **Research flag:** HIGH -- FLS-specific warehouse configuration (number of warehouses, types, part-to-warehouse assignments) requires live discovery queries during planning.
+**Plans**: 2 plans
+
+Plans:
+- [ ] 11-01-PLAN.md -- Create inventory skill with table architecture, stock level queries (INV-01), and reorder monitoring (INV-02)
+- [ ] 11-02-PLAN.md -- Add purchasing intelligence, material consumption, inventory valuation (INV-03), and NL routing
 
 ### Phase 12: Production Workflow
 
@@ -154,7 +159,7 @@ Phases execute in numeric order with parallelization: 9+10 (parallel) -> 11 -> 1
 |-------|-----------|----------------|--------|-----------|
 | 9. Financial Depth | v1.1 | 2/2 | Complete | 2026-02-09 |
 | 10. Customer Intelligence | v1.1 | 2/2 | Complete | 2026-02-09 |
-| 11. Inventory Management | v1.1 | 0/TBD | Not started | - |
+| 11. Inventory Management | v1.1 | 0/2 | Planned | - |
 | 12. Production Workflow | v1.1 | 0/TBD | Not started | - |
 | 13. Glossary Integration | v1.1 | 0/TBD | Not started | - |
 
