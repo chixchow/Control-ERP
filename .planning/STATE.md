@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 ## Current Position
 
 Phase: 4 of 8 (Sales Skill Verification — Wave 2)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-08 -- Completed 04-01-PLAN.md (Sales Skill Documentation Audit)
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-09 -- Completed 04-02-PLAN.md (Query Result Validation)
 
-Progress: [█████░░░░░] 56%
+Progress: [█████░░░░░] 58%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: 4min08s
-- Total execution time: 0.48 hours
+- Total execution time: 0.55 hours
 
 **By Phase:**
 
@@ -30,12 +30,12 @@ Progress: [█████░░░░░] 56%
 | 01 | 1 | 2min43s | 2min43s |
 | 02 | 2 | 8min26s | 4min13s |
 | 03 | 2 | 11min27s | 5min44s |
-| 04 | 1 | 2min53s | 2min53s |
+| 04 | 2 | 7min2s | 3min31s |
 | 05 | 1 | 2min36s | 2min36s |
 
 **Recent Trend:**
-- Last 5 plans: 7min15s, 3min45s, 4min41s, 2min36s, 2min53s
-- Trend: Verification and targeted fixes consistently under 3min; documentation formalization 4-7min
+- Last 5 plans: 3min45s, 4min41s, 2min36s, 2min53s, 4min9s
+- Trend: Verification tasks 3-5min (documentation audits faster than query validations); targeted fixes under 3min
 
 *Updated after each plan completion*
 
@@ -65,6 +65,8 @@ Recent decisions affecting current work:
 - [04-01]: Added Caveat #6 documenting Control Report vs Query Grouping discrepancy - DyeLux/Garment variance explained
 - [04-01]: Pattern overlap analysis confirms Template 8 CASE order prevents double-counting between DyeSub and Description patterns
 - [04-01]: "Other Products/Services" bucket ($256K, 8.4%) assessed as acceptable catch-all category
+- [04-02]: Cross-reference verification used for query validation due to Mac MCP constraint - all 9 sales templates verified against phase2-test-results.md
+- [04-02]: Internal consistency checks confirm DyeSub categories sum to total, product groups sum to detail total, monthly sum matches annual within $4
 
 ### Pending Todos
 
@@ -73,18 +75,19 @@ None yet.
 ### Blockers/Concerns
 
 - Existing phase2-test-results.md shows tests already passing -- Phase 7 may be largely re-execution for formal scorecard
+- Optional live query re-validation recommended from Windows environment when convenient (Phase 4 verification used cross-reference method due to Mac MCP constraint)
 
 ## Session Continuity
 
-Last session: 2026-02-08
-Stopped at: Completed 04-01-PLAN.md (Sales Skill Documentation Audit)
+Last session: 2026-02-09
+Stopped at: Completed 04-02-PLAN.md (Query Result Validation - SALES-04, SALES-05, SALES-06)
 Resume file: None
 
 **Phase 1 Status:** Complete (1/1 plans done) — Verified 2026-02-08 (gaps fixed by orchestrator)
 **Phase 2 Status:** Complete (2/2 plans done) — Schema & FK verified, ClassTypeID reference compiled 2026-02-09
 **Phase 3 Status:** Complete (2/2 plans done) — CHAPI, Crystal Reports, Macros formalized 2026-02-08
-**Phase 4 Status:** In progress (1/2 plans done) — Sales skill documentation verified 2026-02-08
+**Phase 4 Status:** Complete (2/2 plans done) — Sales skill verified 2026-02-09 (6/6 SALES requirements PASS)
 **Phase 5 Status:** In progress (1/2 plans done) — System accounts corrected, Ledger field reference added 2026-02-09
 **Wave 1 Status:** Complete (3/3 phases done) — Core Skill, Schema, Wiki all verified/formalized
-**Wave 2 Status:** In progress (2/4 plans done, 2 phases active)
-**Next up:** 04-02 (Live Query Validation) or 05-02 (Payment GL Offset Logic) — parallel wave 2 execution
+**Wave 2 Status:** In progress (3/4 plans done, 1 phase complete, 1 active)
+**Next up:** 05-02 (Payment GL Offset Logic) — final Wave 2 plan
