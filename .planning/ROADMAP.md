@@ -106,11 +106,11 @@ Plans:
   1. `control-erp-financial-SKILL.md` documents GL view vs Ledger table structure, sign conventions, and GLClassificationType reference -- a user asking "How does GL work in Control?" gets a clear answer
   2. GL system account NodeIDs documented (11=WIP, 12=Built, 14=AR, 21=Orders Due, 24=Customer Deposits, 91=Undeposited Funds) with their purpose in the order lifecycle
   3. Payment GL offset logic documented -- how WIP/Built deposits vs Sale payments flow through GL accounts, with example journal entries
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 05-01: Review and complete financial skill GL documentation
-- [ ] 05-02: Document payment GL offset logic with examples
+- [ ] 05-01-PLAN.md — Verify NodeID names, add missing system accounts, Ledger field reference, and Closeout section
+- [ ] 05-02-PLAN.md — Add deposit workflow, TenderType/ClassTypeID references, and Built cost flow documentation
 
 ### Phase 6: Glossary Skill Creation
 **Goal**: A control-erp-glossary skill exists that maps FLS business language and Control-specific terminology to database entities and queries
