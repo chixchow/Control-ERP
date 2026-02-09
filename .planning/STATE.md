@@ -9,19 +9,19 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 
 ## Current Position
 
-Phase: 7 of 8 (Test Suite Execution — Wave 3)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-09 -- Completed 07-02-PLAN.md (Complete Scorecard - 21/21 PASS)
+Phase: 8 of 8 (Documentation & Milestone Close — Wave 4)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-09 -- Completed 08-01-PLAN.md (Skill Architecture + Query Pattern Reference)
 
-Progress: [████████░░] 87%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
-- Average duration: 4min10s
-- Total execution time: 0.83 hours
+- Total plans completed: 13
+- Average duration: 4min7s
+- Total execution time: 0.89 hours
 
 **By Phase:**
 
@@ -34,9 +34,10 @@ Progress: [████████░░] 87%
 | 05 | 2 | 5min37s | 2min49s |
 | 06 | 1 | 8min46s | 8min46s |
 | 07 | 2 | 6min56s | 3min28s |
+| 08 | 1 | 4min7s | 4min7s |
 
 **Recent Trend:**
-- Last 5 plans: 4min9s, 3min1s, 8min46s, 3min11s, 3min45s
+- Last 5 plans: 3min1s, 8min46s, 3min11s, 3min45s, 4min7s
 - Trend: Validation tasks 3-4min; glossary/synthesis 8-9min; documentation tasks 3-5min
 
 *Updated after each plan completion*
@@ -83,6 +84,9 @@ Recent decisions affecting current work:
 - [07-02]: Gotcha validation format includes trap/wrong/correct/impact/skill-citation/status - proves skills prevent $1.3M+ errors through explicit warnings
 - [07-02]: Tier 7 behavioral assessment cites specific skill file lines/sections that prevent ambiguity and edge-case errors
 - [07-02]: Comprehensive scorecard summary (21 tests + totals + gate + requirements) provides standalone milestone artifact
+- [08-01]: Order lifecycle embedded in skill-architecture.md rather than standalone document - architecture + lifecycle naturally belong together
+- [08-01]: Query patterns organized by business question type (8 sections) not by table/domain - matches user intent
+- [08-01]: Web Orders added as separate section beyond 6 required - unique deduplication requirements warrant visibility
 
 ### Pending Todos
 
@@ -90,12 +94,12 @@ None yet.
 
 ### Blockers/Concerns
 
-- None - Phase 7 complete with perfect scorecard (21/21 PASS, all 6 TEST requirements satisfied)
+- None - Phase 8 in progress (1/3 plans complete)
 
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 07-02-PLAN.md (Complete Scorecard - 21/21 PASS)
+Stopped at: Completed 08-01-PLAN.md (Skill Architecture + Query Pattern Reference)
 Resume file: None
 
 **Phase 1 Status:** Complete (1/1 plans done) — Verified 2026-02-08 (gaps fixed by orchestrator)
@@ -108,4 +112,6 @@ Resume file: None
 **Wave 1 Status:** Complete (3/3 phases done) — Core Skill, Schema, Wiki all verified/formalized
 **Wave 2 Status:** Complete (4/4 plans done, 2 phases complete) — Sales & Financial skills verified and enhanced
 **Wave 3 Status:** Complete (3/3 plans done, 2 phases complete) — Glossary + validation complete
-**Next up:** Phase 8 (Final Package Release) — Wave 4
+**Phase 8 Status:** In progress (1/3 plans done) — DOC-01, DOC-02, DOC-03 complete 2026-02-09
+**Wave 4 Status:** In progress (1/3 plans done)
+**Next up:** Phase 8 Plans 02 and 03
