@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 ## Current Position
 
 Phase: 8 of 8 (Documentation & Milestone Close — Wave 4)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-09 -- Completed 08-01-PLAN.md (Skill Architecture + Query Pattern Reference)
+Last activity: 2026-02-09 -- Completed 08-02-PLAN.md (Crystal Reports Catalog + Known Gotchas)
 
-Progress: [█████████░] 93%
+Progress: [█████████░] 95%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
-- Average duration: 4min7s
-- Total execution time: 0.89 hours
+- Total plans completed: 14
+- Average duration: 4min11s
+- Total execution time: 0.98 hours
 
 **By Phase:**
 
@@ -34,11 +34,11 @@ Progress: [█████████░] 93%
 | 05 | 2 | 5min37s | 2min49s |
 | 06 | 1 | 8min46s | 8min46s |
 | 07 | 2 | 6min56s | 3min28s |
-| 08 | 1 | 4min7s | 4min7s |
+| 08 | 2 | 9min23s | 4min42s |
 
 **Recent Trend:**
-- Last 5 plans: 3min1s, 8min46s, 3min11s, 3min45s, 4min7s
-- Trend: Validation tasks 3-4min; glossary/synthesis 8-9min; documentation tasks 3-5min
+- Last 5 plans: 8min46s, 3min11s, 3min45s, 4min7s, 5min16s
+- Trend: Validation tasks 3-4min; glossary/synthesis 8-9min; documentation tasks 4-5min
 
 *Updated after each plan completion*
 
@@ -87,6 +87,8 @@ Recent decisions affecting current work:
 - [08-01]: Order lifecycle embedded in skill-architecture.md rather than standalone document - architecture + lifecycle naturally belong together
 - [08-01]: Query patterns organized by business question type (8 sections) not by table/domain - matches user intent
 - [08-01]: Web Orders added as separate section beyond 6 required - unique deduplication requirements warrant visibility
+- [08-02]: MCP unavailable for ReportMenuItem query - used existing report_summary.md, schemas, and wiki references as fallback data sources
+- [08-02]: Crystal Reports catalog explicitly notes .rpt SQL extraction deferred to Milestone 2
 
 ### Pending Todos
 
@@ -94,12 +96,12 @@ None yet.
 
 ### Blockers/Concerns
 
-- None - Phase 8 in progress (1/3 plans complete)
+- None - Phase 8 in progress (2/3 plans complete)
 
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 08-01-PLAN.md (Skill Architecture + Query Pattern Reference)
+Stopped at: Completed 08-02-PLAN.md (Crystal Reports Catalog + Known Gotchas)
 Resume file: None
 
 **Phase 1 Status:** Complete (1/1 plans done) — Verified 2026-02-08 (gaps fixed by orchestrator)
@@ -112,6 +114,6 @@ Resume file: None
 **Wave 1 Status:** Complete (3/3 phases done) — Core Skill, Schema, Wiki all verified/formalized
 **Wave 2 Status:** Complete (4/4 plans done, 2 phases complete) — Sales & Financial skills verified and enhanced
 **Wave 3 Status:** Complete (3/3 plans done, 2 phases complete) — Glossary + validation complete
-**Phase 8 Status:** In progress (1/3 plans done) — DOC-01, DOC-02, DOC-03 complete 2026-02-09
-**Wave 4 Status:** In progress (1/3 plans done)
-**Next up:** Phase 8 Plans 02 and 03
+**Phase 8 Status:** In progress (2/3 plans done) — DOC-01 through DOC-05 complete 2026-02-09
+**Wave 4 Status:** In progress (2/3 plans done)
+**Next up:** Phase 8 Plan 03 (Validation Methodology + Milestone Close)
