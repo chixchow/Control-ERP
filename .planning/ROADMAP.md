@@ -120,10 +120,10 @@ Plans:
   1. `skills/control-erp-glossary/` contains a SKILL.md with YAML frontmatter that Claude can load as a skill
   2. FLS product line terminology mapped (blanket, SEG, Fab Frame, DyeLux, table throw, step and repeat, etc.) to database queries and entities -- a user saying "find blanket orders" gets routed to the right query
   3. Control-specific technical terms defined (CHAPI, SSLIP, CFL, SQLBridge, ClassTypeID, GoodsItemClassTypeID) with how each relates to the database -- a user asking "What is a SSLIP?" gets a clear, useful answer
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 06-01: Create glossary skill structure and populate terminology
+- [ ] 06-01-PLAN.md — Create glossary skill with FLS product terminology, Control technical terms, and natural language routing table
 
 ### Phase 7: Test Suite Execution
 **Goal**: All validation tests formally executed with a pass/fail scorecard proving that the skills produce accurate results against known Control report outputs
