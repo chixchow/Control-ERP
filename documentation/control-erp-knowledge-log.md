@@ -36,7 +36,7 @@ Use this format for all new entries:
 | **4** | **Credit Memo** | Wiki: sql_structure_-_transheader_table | StatusID 20 (Credit Memo), 9 (Voided). Zero records in 2025 FLS data. |
 | **5** | **UNUSED** | Query: Zero records exist in 2025 data | Wiki shows "?" — undefined |
 | **6** | **Service Ticket** | Query: 1 record in 2025, $0.00 | Rarely used at FLS |
-| **7** | **Vendor Purchase Order** | Query: 616 records, $703,333.25. All StatusID=28 (Open) | Uses PurchaseOrderNumber |
+| **7** | **Vendor Purchase Order** | Query: 616 records, $703,333.25. All StatusID=28 (Closed) | Uses PurchaseOrderNumber |
 | **8** | **Vendor Bill (Payment)** | Query: 1,642 records, $2,139,193.80. All StatusID=4 (Completed) | Uses PurchaseOrderNumber |
 | **9** | **Vendor Bill (Received)** | Query: 239 records, $437,535.07. All StatusID=4 (Completed) | Uses PurchaseOrderNumber. Wiki calls this "Receiving Document" |
 | **10** | **Vendor Credit Memo** | Wiki: sql_structure_-_transheader_table | StatusID 24. Not yet validated in FLS data. |
@@ -48,7 +48,7 @@ Use this format for all new entries:
 
 ### Vendor Purchasing Chain
 Confirmed 2025-02-07: The vendor workflow follows Type 7→8→9
-- Type 7: Vendor PO created (StatusID 28 = Open)
+- Type 7: Vendor PO created (StatusID 28 = Closed)
 - Type 8: Vendor Bill Payment (StatusID 4 = Completed)
 - Type 9: Vendor Bill Received (StatusID 4 = Completed)
 
@@ -342,12 +342,12 @@ Type 1 Order Created (StatusID 1 = WIP / Work in Process)
     │   [Order is processed, produced, may receive deposit]
     │   [Many orders are prepaid — deposit = full order value at placement]
     │
-    ├──→ StatusID ? = Built (rarely used — indicates production complete)
+    ├──→ StatusID 2 = Built (rarely used — indicates production complete)
     │
-    ├──→ StatusID 3 = Sales (order shipped/fulfilled, customer invoiced)
+    ├──→ StatusID 3 = Sale (order shipped/fulfilled, customer invoiced)
     │        │   SaleDate is set at this point — THIS is when revenue is recorded
     │        │
-    │        ├──→ StatusID = Closed (automatically, if no balance due)
+    │        ├──→ StatusID 4 = Closed (automatically, if no balance due)
     │        │        Prepaid orders go directly from Sales → Closed
     │        │        because deposit covered the full amount
     │        │
@@ -394,7 +394,7 @@ Type 1 Order Created (StatusID 1 = WIP / Work in Process)
 - Profile: small B2C orders averaging ~$351 in 2025 (deduplicated)
 
 ### Vendor Purchasing Workflow (Validated 2025-02-07)
-- Type 7: Vendor PO created → StatusID 28 (Open)
+- Type 7: Vendor PO created → StatusID 28 (Closed)
 - Type 8: Vendor Bill Payment → StatusID 4 (Completed)
 - Type 9: Vendor Bill Received → StatusID 4 (Completed)
 
