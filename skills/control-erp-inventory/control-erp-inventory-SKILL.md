@@ -308,6 +308,157 @@ ORDER BY PartsNeedingReorder DESC
 
 Reorder alerts depend on accurate ReorderPoint configuration in Control. Only 74 of 392 tracked parts have reorder points set. Parts without reorder points won't appear in alerts even if at zero stock. Recommend user work with Control admin to configure reorder points for critical parts.
 
-<!-- Plan 02 adds: purchasing intelligence (PO history, last price paid, vendor costs), material consumption analysis, inventory valuation, and NL routing table -->
+---
+
+## PURCHASING INTELLIGENCE -- PRIMARY TIER (Reliable)
+
+**Purchasing data from Type 7 POs is well-maintained and reliable.** These queries are the primary source for cost lookups and vendor intelligence. When a user asks "what does X cost", use the last price paid from PO history.
+
+### Last Price Paid for a Part (via CatalogItem -- primary path)
+
+Most raw materials with vendor catalog linkage use this path:
+
+```sql
+SELECT TOP 1
+    p.ItemName AS PartName,
+    vd.UnitPrice AS LastPricePaid,
+    vd.UnitText AS PriceUnit,
+    vd.Quantity AS LastQtyOrdered,
+    vd.TotalPrice AS LastTotalCost,
+    a.CompanyName AS Vendor,
+    th.TransactionNumber AS PONumber
+FROM VendorTransDetail vd
+JOIN CatalogItem ci ON vd.ItemID = ci.ID AND vd.ItemClassTypeID = 12076
+JOIN Part p ON ci.PartID = p.ID
+JOIN TransHeader th ON vd.TransHeaderID = th.ID
+JOIN Account a ON th.AccountID = a.ID
+WHERE th.TransactionType = 7
+    AND p.ID = @PartID
+ORDER BY th.ID DESC
+```
+
+**Guidance:** Try CatalogItem path (12076) first. If no results, try direct Part path (12014). 160 tracked parts have PO history via CatalogItem; 118 via direct Part link.
+
+### Last Price Paid for a Part (direct Part link -- secondary path)
+
+Garments and outsource items link directly:
+
+```sql
+SELECT TOP 1
+    p.ItemName AS PartName,
+    vd.UnitPrice AS LastPricePaid,
+    vd.UnitText AS PriceUnit,
+    vd.Quantity AS LastQtyOrdered,
+    vd.TotalPrice AS LastTotalCost,
+    a.CompanyName AS Vendor,
+    th.TransactionNumber AS PONumber
+FROM VendorTransDetail vd
+JOIN Part p ON vd.ItemID = p.ID AND vd.ItemClassTypeID = 12014
+JOIN TransHeader th ON vd.TransHeaderID = th.ID
+JOIN Account a ON th.AccountID = a.ID
+WHERE th.TransactionType = 7
+    AND p.ID = @PartID
+ORDER BY th.ID DESC
+```
+
+### PO History for a Part (last 10 orders)
+
+```sql
+SELECT TOP 10
+    th.TransactionNumber AS PONumber,
+    a.CompanyName AS Vendor,
+    vd.Quantity,
+    vd.UnitPrice,
+    vd.TotalPrice,
+    vd.UnitText
+FROM VendorTransDetail vd
+JOIN CatalogItem ci ON vd.ItemID = ci.ID AND vd.ItemClassTypeID = 12076
+JOIN Part p ON ci.PartID = p.ID
+JOIN TransHeader th ON vd.TransHeaderID = th.ID
+JOIN Account a ON th.AccountID = a.ID
+WHERE th.TransactionType = 7
+    AND p.ID = @PartID
+ORDER BY th.ID DESC
+```
+
+### Price History for a Part (trend over time)
+
+```sql
+SELECT TOP 20
+    vd.UnitPrice,
+    vd.Quantity,
+    vd.UnitText,
+    a.CompanyName AS Vendor,
+    th.TransactionNumber AS PONumber,
+    th.ID AS POSequence
+FROM VendorTransDetail vd
+JOIN CatalogItem ci ON vd.ItemID = ci.ID AND vd.ItemClassTypeID = 12076
+JOIN Part p ON ci.PartID = p.ID
+JOIN TransHeader th ON vd.TransHeaderID = th.ID
+JOIN Account a ON th.AccountID = a.ID
+WHERE th.TransactionType = 7
+    AND p.ID = @PartID
+ORDER BY th.ID DESC
+```
+
+**Note:** Use th.ID DESC for ordering POs by recency (auto-increment, always reliable). SaleDate may not work reliably for Type 7 records.
+
+### Top Vendors by PO Count
+
+```sql
+SELECT TOP 10
+    a.CompanyName AS Vendor,
+    COUNT(DISTINCT th.ID) AS POCount,
+    SUM(vd.TotalPrice) AS TotalSpend
+FROM VendorTransDetail vd
+JOIN TransHeader th ON vd.TransHeaderID = th.ID
+JOIN Account a ON th.AccountID = a.ID
+WHERE th.TransactionType = 7
+    AND th.StatusID NOT IN (29)  -- exclude cancelled
+GROUP BY a.CompanyName
+ORDER BY POCount DESC
+```
+
+### Most Frequently Ordered Parts (last 12 months)
+
+```sql
+SELECT TOP 25
+    p.ItemName,
+    pe.ElementName AS Category,
+    COUNT(DISTINCT th.ID) AS POCount,
+    SUM(vd.TotalPrice) AS TotalSpend,
+    MAX(vd.UnitPrice) AS LastUnitPrice,
+    p.DisplayUnitText AS Unit,
+    i.QuantityAvailable,
+    i.QuantityOnHand
+FROM VendorTransDetail vd
+JOIN CatalogItem ci ON vd.ItemID = ci.ID AND vd.ItemClassTypeID = 12076
+JOIN Part p ON ci.PartID = p.ID
+JOIN TransHeader th ON vd.TransHeaderID = th.ID
+LEFT JOIN Inventory i ON i.PartID = p.ID
+    AND i.ClassTypeID = 12200 AND i.IsGroup = 0 AND i.IsDivisionSummary = 0 AND i.WarehouseID = 10
+LEFT JOIN PricingElement pe ON p.CategoryID = pe.ID AND pe.ClassTypeID = 12035
+WHERE th.TransactionType = 7
+    AND p.IsActive = 1 AND p.TrackInventory = 1
+GROUP BY p.ItemName, pe.ElementName, p.DisplayUnitText, i.QuantityAvailable, i.QuantityOnHand
+ORDER BY POCount DESC
+```
+
+### VendorTransDetail Polymorphic Link Reference
+
+| ItemClassTypeID | Meaning | Count | Join Target |
+|-----------------|---------|-------|-------------|
+| 12076 | CatalogItem | 6,523 | VendorTransDetail.ItemID -> CatalogItem.ID -> CatalogItem.PartID -> Part.ID |
+| 12014 | Part (direct) | 84,191 | VendorTransDetail.ItemID -> Part.ID |
+| NULL | Freeform | 38,987 | No link (manual line items, skip) |
+
+### PO Status Reference (Type 7)
+
+| StatusID | Status | Count |
+|----------|--------|-------|
+| 28 | Closed | 12,338 |
+| 29 | Cancelled | 164 |
+| 27 | Ordered | 12 |
+| 25 | Requested | 1 |
 
 ---
