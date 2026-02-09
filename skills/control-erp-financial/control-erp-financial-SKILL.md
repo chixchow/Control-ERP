@@ -1048,6 +1048,115 @@ Gross margin ~82% in recent periods.
 
 ---
 
+## CASH FLOW AND BANK BALANCES
+
+### Bank Balance (Current Cash Position)
+
+Cumulative balance on bank accounts. **NO date filter** for "current" balance -- this is all-time cumulative. Exclude ZoomTex legacy accounts (10522-10525).
+
+```sql
+-- Current bank balances (cumulative, NO date filter)
+SELECT
+    ga.AccountName,
+    SUM(l.Amount) AS Balance
+FROM GL l
+INNER JOIN GLAccount ga ON l.GLAccountID = ga.ID
+WHERE ga.GLClassificationType = 1000  -- Cash/Bank accounts
+    AND ga.IsActive = 1
+    AND ga.ID NOT IN (10522, 10523, 10524, 10525)  -- Exclude ZoomTex legacy
+GROUP BY ga.AccountName, ga.ID
+ORDER BY ga.ID
+```
+
+Add a total row when presenting results: sum all bank account balances for total cash position.
+
+### Undeposited Funds (In Transit)
+
+Funds received but not yet deposited to bank. Shown separately from bank balance.
+
+```sql
+-- Undeposited funds by account (in transit, not yet in bank)
+SELECT
+    ga.AccountName,
+    SUM(l.Amount) AS Balance
+FROM GL l
+INNER JOIN GLAccount ga ON l.GLAccountID = ga.ID
+WHERE ga.GLClassificationType = 1007  -- Undeposited Funds
+    AND ga.IsActive = 1
+    AND ga.ID NOT IN (10522, 10523, 10524, 10525)  -- Exclude ZoomTex
+GROUP BY ga.AccountName, ga.ID
+HAVING SUM(l.Amount) != 0
+ORDER BY ga.ID
+```
+
+### Cash Flow Summary (YTD)
+
+Categorized cash in/out for a date range. Tracks only bank account movements (GLClassificationType = 1000) to avoid double-counting the undeposited-to-bank two-step process. Default period: year-to-date.
+
+```sql
+DECLARE @StartDate DATETIME = DATEADD(yy, DATEDIFF(yy, 0, GETDATE()), 0);
+DECLARE @EndDate DATETIME = GETDATE();
+
+-- Cash flow: entries hitting bank accounts, categorized by activity type
+SELECT
+    CASE
+        WHEN l.DepositJournalID IS NOT NULL AND l.Amount > 0 THEN 'Customer Deposits'
+        WHEN j.ClassTypeID = 20009 THEN 'Vendor Payments'
+        WHEN l.PayrollID IS NOT NULL THEN 'Payroll'
+        WHEN l.EntryType = 1 THEN 'Manual/Adjustments'
+        WHEN l.Amount > 0 THEN 'Other Inflows'
+        ELSE 'Other Outflows'
+    END AS CashCategory,
+    SUM(l.Amount) AS NetAmount,
+    COUNT(*) AS Entries
+FROM GL l
+LEFT JOIN Journal j ON l.JournalID = j.ID
+WHERE l.GLAccountID IN (90, 10412)  -- Bank accounts only
+    AND l.EntryDateTime BETWEEN @StartDate AND @EndDate
+GROUP BY
+    CASE
+        WHEN l.DepositJournalID IS NOT NULL AND l.Amount > 0 THEN 'Customer Deposits'
+        WHEN j.ClassTypeID = 20009 THEN 'Vendor Payments'
+        WHEN l.PayrollID IS NOT NULL THEN 'Payroll'
+        WHEN l.EntryType = 1 THEN 'Manual/Adjustments'
+        WHEN l.Amount > 0 THEN 'Other Inflows'
+        ELSE 'Other Outflows'
+    END
+ORDER BY NetAmount DESC
+```
+
+### Monthly Cash Flow Time Series
+
+When user asks for cash flow over multiple months or cash flow trend:
+
+```sql
+DECLARE @StartDate DATETIME = DATEADD(yy, DATEDIFF(yy, 0, GETDATE()), 0);
+DECLARE @EndDate DATETIME = GETDATE();
+
+SELECT
+    YEAR(l.EntryDateTime) AS Yr,
+    MONTH(l.EntryDateTime) AS Mo,
+    SUM(CASE WHEN l.Amount > 0 THEN l.Amount ELSE 0 END) AS CashIn,
+    SUM(CASE WHEN l.Amount < 0 THEN l.Amount ELSE 0 END) AS CashOut,
+    SUM(l.Amount) AS NetCashFlow
+FROM GL l
+WHERE l.GLAccountID IN (90, 10412)  -- Bank accounts
+    AND l.EntryDateTime BETWEEN @StartDate AND @EndDate
+GROUP BY YEAR(l.EntryDateTime), MONTH(l.EntryDateTime)
+ORDER BY Yr, Mo
+```
+
+### Cash Flow Notes
+
+- **Bank balance = cumulative** (no date filter). **Cash flow = period activity** (with date filter). Different queries for different purposes.
+- Cash flow tracks only bank account movements (GLClassificationType = 1000) to avoid double-counting the undeposited-to-bank two-step deposit process.
+- Categorization covers ~90% of entries. "Other" bucket captures miscellaneous GL entries (bank fees, loan payments, etc.).
+- Default period: year-to-date (consistent with P&L).
+- Exclude ZoomTex legacy accounts (10522-10525) from all bank and cash flow queries.
+- **Payment forecast is deferred** to the analytics milestone. This skill provides historical cash flow only. If user asks for projected or forecasted cash flow, respond that this capability is planned but not yet available, and offer historical cash flow instead.
+
+---
+
 ## NATURAL LANGUAGE INTERPRETATION
 
 | User Says | Action |
@@ -1070,7 +1179,11 @@ Gross margin ~82% in recent periods.
 | "gross margin by product" | Product-Line Margin Analysis + COGS limitation note |
 | "Revenue by product" (GL-based) | Revenue by Product Line |
 | "What's our gross margin?" | P&L Summary → GrossProfit/TotalRevenue |
-| "Cash position" / "how much cash" | Balance Sheet Key Accounts (cash nodes) |
+| "bank balance" / "cash position" / "how much cash do we have" | Bank Balance query (cumulative, no date filter) |
+| "undeposited funds" / "funds in transit" | Undeposited Funds query |
+| "cash flow" / "cash in and out" / "where does our money go" | Cash Flow Summary (YTD) |
+| "monthly cash flow" / "cash flow trend" | Monthly Cash Flow Time Series |
+| "payment forecast" / "projected cash flow" / "cash forecast" | NL: "Payment forecasting is planned for the analytics milestone. Here is the historical cash flow:" then Cash Flow Summary |
 | "Expenses breakdown" | Full P&L filtered to GLClass 5002 |
 | "COGS" / "cost of goods" | Full P&L filtered to GLClass 5001 |
 | "Inventory value" | Balance Sheet → NodeID 10414 |
