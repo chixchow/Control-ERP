@@ -18,12 +18,12 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 
 ### Sales Intelligence
 
-- [ ] **SALES-01**: control-erp-sales skill complete with DyeSub Print container variable architecture (FP_ProductDescription categories, FP_ProductID SKUs)
-- [ ] **SALES-02**: Table Cover product identification documented (Description pattern matching, GoodsItemID=10026)
-- [ ] **SALES-03**: Non-container product identification documented (Shipping, Artwork/Setup, Hardware, Custom Items)
-- [ ] **SALES-04**: Product category revenue validated against Control "Sales by Product" report
-- [ ] **SALES-05**: Customer revenue queries validated (top customers, CLV basics, account lookup)
-- [ ] **SALES-06**: Sales trend queries validated (monthly, quarterly, YoY comparison)
+- [x] **SALES-01**: control-erp-sales skill complete with DyeSub Print container variable architecture (FP_ProductDescription categories, FP_ProductID SKUs)
+- [x] **SALES-02**: Table Cover product identification documented (Description pattern matching, GoodsItemID=10026)
+- [x] **SALES-03**: Non-container product identification documented (Shipping, Artwork/Setup, Hardware, Custom Items)
+- [x] **SALES-04**: Product category revenue validated against Control "Sales by Product" report
+- [x] **SALES-05**: Customer revenue queries validated (top customers, CLV basics, account lookup)
+- [x] **SALES-06**: Sales trend queries validated (monthly, quarterly, YoY comparison)
 
 ### Financial Foundation
 
@@ -130,12 +130,12 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 | CORE-04 | Phase 2: Schema Infrastructure | Complete |
 | CORE-05 | Phase 2: Schema Infrastructure | Complete |
 | CORE-06 | Phase 2: Schema Infrastructure | Complete |
-| SALES-01 | Phase 4: Sales Skill Verification | Pending |
-| SALES-02 | Phase 4: Sales Skill Verification | Pending |
-| SALES-03 | Phase 4: Sales Skill Verification | Pending |
-| SALES-04 | Phase 4: Sales Skill Verification | Pending |
-| SALES-05 | Phase 4: Sales Skill Verification | Pending |
-| SALES-06 | Phase 4: Sales Skill Verification | Pending |
+| SALES-01 | Phase 4: Sales Skill Verification | Complete |
+| SALES-02 | Phase 4: Sales Skill Verification | Complete |
+| SALES-03 | Phase 4: Sales Skill Verification | Complete |
+| SALES-04 | Phase 4: Sales Skill Verification | Complete |
+| SALES-05 | Phase 4: Sales Skill Verification | Complete |
+| SALES-06 | Phase 4: Sales Skill Verification | Complete |
 | FIN-01 | Phase 5: Financial Foundation | Pending |
 | FIN-02 | Phase 5: Financial Foundation | Pending |
 | FIN-03 | Phase 5: Financial Foundation | Pending |

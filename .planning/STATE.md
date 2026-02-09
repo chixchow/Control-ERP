@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** Any FLS team member can ask a business question in plain English and get an accurate, formatted answer from their ERP data.
-**Current focus:** Wave 2 - Phases 4, 5 (parallel)
+**Current focus:** Wave 3 - Phases 6, 7 (parallel)
 
 ## Current Position
 
-Phase: 5 of 8 (Financial Foundation — Wave 2)
-Plan: 2 of 2 in current phase
+Phase: 6 of 8 (Glossary Skill Creation — Wave 3)
+Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-02-09 -- Completed 05-02-PLAN.md (Payment & Cost Flow Documentation)
+Last activity: 2026-02-09 -- Completed 06-01-PLAN.md (Glossary Skill Creation)
 
-Progress: [█████░░░░░] 67%
+Progress: [██████░░░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: 3min58s
-- Total execution time: 0.60 hours
+- Total plans completed: 10
+- Average duration: 4min24s
+- Total execution time: 0.73 hours
 
 **By Phase:**
 
@@ -32,10 +32,11 @@ Progress: [█████░░░░░] 67%
 | 03 | 2 | 11min27s | 5min44s |
 | 04 | 2 | 7min2s | 3min31s |
 | 05 | 2 | 5min37s | 2min49s |
+| 06 | 1 | 8min46s | 8min46s |
 
 **Recent Trend:**
-- Last 5 plans: 4min41s, 2min36s, 2min53s, 4min9s, 3min1s
-- Trend: Financial documentation tasks consistently under 3min; verification tasks 3-5min
+- Last 5 plans: 2min36s, 2min53s, 4min9s, 3min1s, 8min46s
+- Trend: Glossary creation (synthesis task) 8min46s; documentation tasks 3-5min; verification tasks 3-4min
 
 *Updated after each plan completion*
 
@@ -72,6 +73,9 @@ Recent decisions affecting current work:
 - [05-02]: Payment queries should filter to ClassTypeID IN (20001, 20009) for standard order and bill payments
 - [05-02]: Built status documented as Stage 2.5 with FGI cost flow through NodeID 34 (Cost Of Built - FGI)
 - [05-02]: Off-balance sheet entries explained as cost accounting mode for parts expensed at purchase (~307K entries, 11% of Ledger)
+- [06-01]: Comprehensive coverage prioritized over line count target (491 lines vs 250-350 target) to include all required terminology
+- [06-01]: "Blanket" added as standalone non-DyeSub entry despite not being in original 6 groups (frequent user request pattern)
+- [06-01]: Glossary uses cross-reference pattern (points to owning skills) rather than duplicating query templates or business rules
 
 ### Pending Todos
 

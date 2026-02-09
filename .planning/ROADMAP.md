@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Core Skill Verification** - Verify control-erp-core skill completeness and structure the knowledge log
 - [x] **Phase 2: Schema Infrastructure** - Validate schema docs, FK mappings, domain classification, and ClassTypeID reference
 - [x] **Phase 3: Wiki Knowledge Formalization** - Formalize wiki crawl outputs into organized, skill-consumable references
-- [ ] **Phase 4: Sales Skill Verification** - Verify control-erp-sales skill and document all product identification patterns
+- [x] **Phase 4: Sales Skill Verification** - Verify control-erp-sales skill and document all product identification patterns
 - [ ] **Phase 5: Financial Foundation** - Document GL/Ledger architecture, system accounts, and payment logic in the financial skill
 - [ ] **Phase 6: Glossary Skill Creation** - Build control-erp-glossary with FLS business language and Control technical terminology
 - [ ] **Phase 7: Test Suite Execution** - Execute all validation tests with formal scorecard proving accuracy against Control reports
@@ -95,8 +95,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Audit product architecture documentation (SALES-01, -02, -03), verify pattern overlaps, investigate "Other" bucket
-- [ ] 04-02-PLAN.md — Validate product revenue, customer revenue, and trend queries (SALES-04, -05, -06) with formal verification report
+- [x] 04-01-PLAN.md — Audit product architecture documentation (SALES-01, -02, -03), verify pattern overlaps, investigate "Other" bucket
+- [x] 04-02-PLAN.md — Validate product revenue, customer revenue, and trend queries (SALES-04, -05, -06) with formal verification report
 
 ### Phase 5: Financial Foundation
 **Goal**: GL/Ledger architecture, system account NodeIDs, and payment GL offset logic are documented in the financial skill with enough detail that financial queries in Milestone 2 have a solid foundation
@@ -168,7 +168,7 @@ Wave 1 (parallel): 1, 2, 3 -> Wave 2 (parallel): 4, 5 -> Wave 3 (parallel): 6, 7
 | 1. Core Skill Verification | 1/1 | Complete | 2026-02-08 |
 | 2. Schema Infrastructure | 2/2 | Complete | 2026-02-08 |
 | 3. Wiki Knowledge Formalization | 2/2 | Complete | 2026-02-08 |
-| 4. Sales Skill Verification | 0/2 | Not started | - |
+| 4. Sales Skill Verification | 2/2 | Complete | 2026-02-08 |
 | 5. Financial Foundation | 0/2 | Not started | - |
 | 6. Glossary Skill Creation | 0/1 | Not started | - |
 | 7. Test Suite Execution | 0/2 | Not started | - |
