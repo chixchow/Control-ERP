@@ -462,3 +462,201 @@ ORDER BY POCount DESC
 | 25 | Requested | 1 |
 
 ---
+
+## MATERIAL CONSUMPTION & USAGE (INV-03)
+
+### Average Monthly Consumption for a Part
+
+```sql
+SELECT
+    p.ItemName,
+    COUNT(*) AS UsageEvents,
+    SUM(puc.Amount) AS TotalConsumed,
+    SUM(puc.Amount) / 12.0 AS MonthlyAverage,
+    p.DisplayUnitText AS Unit
+FROM PartUsageCard puc
+JOIN Part p ON puc.PartID = p.ID
+WHERE puc.IsVoided = 0
+    AND puc.PostDate >= DATEADD(MONTH, -12, GETDATE())
+    AND p.ID = @PartID
+GROUP BY p.ItemName, p.DisplayUnitText
+```
+
+**Note:** PartUsageCard has 286K non-voided records spanning 2006-2026, covering 1,127 distinct parts. This is the best source for consumption analysis. PartConsumptionJournal is empty at FLS.
+
+### Top Consumed Parts (last 12 months)
+
+```sql
+SELECT TOP 25
+    p.ItemName,
+    pe.ElementName AS Category,
+    SUM(puc.Amount) AS TotalConsumed,
+    COUNT(*) AS UsageEvents,
+    SUM(puc.Amount) / 12.0 AS MonthlyAverage,
+    p.DisplayUnitText AS Unit,
+    i.QuantityAvailable,
+    i.QuantityOnHand
+FROM PartUsageCard puc
+JOIN Part p ON puc.PartID = p.ID
+LEFT JOIN Inventory i ON i.PartID = p.ID
+    AND i.ClassTypeID = 12200 AND i.IsGroup = 0 AND i.IsDivisionSummary = 0 AND i.WarehouseID = 10
+LEFT JOIN PricingElement pe ON p.CategoryID = pe.ID AND pe.ClassTypeID = 12035
+WHERE puc.IsVoided = 0
+    AND p.IsActive = 1
+    AND puc.PostDate >= DATEADD(MONTH, -12, GETDATE())
+GROUP BY p.ItemName, pe.ElementName, p.DisplayUnitText, i.QuantityAvailable, i.QuantityOnHand
+ORDER BY TotalConsumed DESC
+```
+
+### Usage History for a Part (recent events)
+
+```sql
+SELECT TOP 20
+    puc.PostDate,
+    puc.Amount,
+    puc.Cost,
+    p.DisplayUnitText AS Unit,
+    puc.Description,
+    th.TransactionNumber AS OrderNumber
+FROM PartUsageCard puc
+JOIN Part p ON puc.PartID = p.ID
+LEFT JOIN TransHeader th ON puc.TransHeaderID = th.ID
+WHERE puc.IsVoided = 0
+    AND p.ID = @PartID
+ORDER BY puc.PostDate DESC
+```
+
+### Months of Supply Remaining (consumption-based)
+
+For parts with consumption history, calculate how long current stock will last:
+
+```sql
+SELECT
+    p.ItemName,
+    i.QuantityAvailable AS CurrentStock,
+    p.DisplayUnitText AS Unit,
+    SUM(puc.Amount) / 12.0 AS MonthlyConsumption,
+    CASE WHEN SUM(puc.Amount) > 0
+         THEN i.QuantityAvailable / (SUM(puc.Amount) / 12.0)
+         ELSE NULL END AS MonthsOfSupply
+FROM Part p
+JOIN Inventory i ON i.PartID = p.ID
+    AND i.ClassTypeID = 12200 AND i.IsGroup = 0 AND i.IsDivisionSummary = 0 AND i.WarehouseID = 10
+JOIN PartUsageCard puc ON puc.PartID = p.ID AND puc.IsVoided = 0
+    AND puc.PostDate >= DATEADD(MONTH, -12, GETDATE())
+WHERE p.IsActive = 1 AND p.TrackInventory = 1
+    AND i.QuantityAvailable > 0
+GROUP BY p.ItemName, i.QuantityAvailable, p.DisplayUnitText
+HAVING SUM(puc.Amount) > 0
+ORDER BY CASE WHEN SUM(puc.Amount) > 0
+         THEN i.QuantityAvailable / (SUM(puc.Amount) / 12.0)
+         ELSE 9999 END ASC
+```
+
+**Note:** This is a SECONDARY TIER query -- both inventory quantities and consumption records may be incomplete. Caveat results accordingly. Sort by fewest months of supply (most urgent) first.
+
+---
+
+## INVENTORY VALUATION (INV-03)
+
+### Total Inventory Value (Accounting -- GL-based, RECOMMENDED)
+
+```sql
+SELECT SUM(Amount) AS InventoryBalance
+FROM GL
+WHERE GLAccountID = 10414
+```
+
+**Result at FLS:** $651,403.34 (as of research date). This matches the balance sheet and is the authoritative inventory valuation.
+
+**Guidance:** When user asks "what's our inventory worth" or "inventory value", use this GL query. The GL balance is the single source of truth for inventory valuation. Do NOT sum part-level costs.
+
+### Inventory GL Sub-Account Breakdown
+
+```sql
+SELECT
+    ga.ID AS NodeID,
+    ga.AccountName,
+    SUM(g.Amount) AS Balance
+FROM GL g
+JOIN GLAccount ga ON g.GLAccountID = ga.ID
+WHERE ga.GLClassificationType = 1003
+    AND ga.ClassTypeID = 8001  -- leaf accounts only
+GROUP BY ga.ID, ga.AccountName
+HAVING SUM(g.Amount) <> 0
+ORDER BY SUM(g.Amount) DESC
+```
+
+Shows breakdown across all inventory-type GL accounts (10414=Inventory, plus product-specific accounts like Banner Supplies, Inks, etc.).
+
+### Part-Level Valuation (operational estimate, use with caveats)
+
+```sql
+SELECT
+    p.ItemName,
+    i.QuantityBilled,
+    i.AverageCost,
+    i.QuantityBilled * i.AverageCost AS EstimatedValue,
+    p.DisplayUnitText AS Unit,
+    CASE WHEN p.AccrueCosts = 1 THEN 'Full Accrual' ELSE 'Level Only' END AS TrackingMode
+FROM Part p
+JOIN Inventory i ON i.PartID = p.ID
+    AND i.ClassTypeID = 12200
+    AND i.IsGroup = 0 AND i.IsDivisionSummary = 0
+    AND i.WarehouseID = 10
+WHERE p.IsActive = 1 AND p.TrackInventory = 1
+    AND p.AccrueCosts = 1
+    AND i.QuantityBilled <> 0
+ORDER BY i.QuantityBilled * i.AverageCost DESC
+```
+
+**Note:** Use QuantityBilled (not QuantityOnHand) for valuation per wiki formula. Only show AccrueCosts=1 parts (these are GL-integrated). This is an operational estimate; the GL total is authoritative.
+
+---
+
+## NATURAL LANGUAGE INTERPRETATION
+
+| User Says | Route To | Section |
+|-----------|----------|---------|
+| "check inventory for X" / "what's in stock for X" / "stock level for X" | Stock Level Check | 4a |
+| "what's in stock" / "show me inventory" / "inventory overview" | Broad Stock Overview | 4b |
+| "parts by category" / "inventory by category" | Parts by Category | 4c |
+| "tell me everything about part X" / "part detail for X" | Part Detail Card | 4d |
+| "what needs reordering" / "reorder report" / "low stock" | Reorder Alert | 5a |
+| "reorder by category" / "reorder summary" | Reorder Summary | 5b |
+| "what does X cost" / "how much is X" / "price of X" | Last Price Paid | 6a/6b |
+| "PO history for X" / "purchase orders for X" | PO History | 6c |
+| "price history for X" / "price trend" | Price History | 6d |
+| "top vendors" / "who do we buy from" | Top Vendors | 6e |
+| "most ordered parts" / "what do we buy most" | Most Ordered Parts | 6f |
+| "how much X do we use" / "consumption for X" / "usage rate" | Monthly Consumption | 7a |
+| "top consumed parts" / "most used materials" | Top Consumed Parts | 7b |
+| "usage history for X" / "when did we last use X" | Usage History | 7c |
+| "how long will X last" / "months of supply" | Months of Supply | 7d |
+| "what's our inventory worth" / "inventory value" | GL Inventory Value | 8a |
+| "inventory value breakdown" / "inventory by GL account" | GL Sub-Account | 8b |
+| "part-level valuation" / "value of each part" | Part-Level Estimate | 8c |
+| "warehouse breakdown" / "apparel inventory" | Run default queries with WarehouseID filter adjusted | General |
+
+### Cross-Skill Routing
+
+- **"AR for vendor X" / "what do we owe vendor"** → Redirect to control-erp-financial (AP queries)
+- **"revenue from X" / "sales of X"** → Redirect to control-erp-sales or control-erp-customers
+- **"GL inventory account" / "inventory on balance sheet"** → Can answer with 8a/8b, or redirect to control-erp-financial for full GL context
+
+---
+
+## DATA QUALITY & MIGRATION STATUS
+
+**Current State (2026):**
+- FLS is migrating inventory from Google Sheets to Control
+- Current inventory data quality: 214 records with negative QuantityOnHand, part-level valuation diverges significantly from GL
+- Purchasing data (Type 7 POs) is reliable and well-maintained
+- Recommendation: Verify stock levels physically for critical decisions; use PO data for cost/vendor questions
+
+**Post-Migration:**
+- Inventory quantity queries will become primary tier
+- Reorder monitoring will become reliable
+- Part-level valuation will align with GL accounts
+
+---
