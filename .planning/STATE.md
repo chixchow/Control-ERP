@@ -48,6 +48,7 @@ Recent decisions affecting current work:
 - Walk-In account (ID=10, AccountNumber=0) excluded from customer analytics
 - Customer skill kept integrated at 1,073 lines (not extracted to references, below 1,200-line threshold)
 - Customer ranking/segmentation/at-risk completed in single comprehensive commit (more efficient than artificial separation)
+- RFM NTILE ordering: DESC for Recency, ASC for Frequency/Monetary (verifier caught inversion)
 
 ### Pending Todos
 
