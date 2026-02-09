@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** Any FLS team member can ask a business question in plain English and get an accurate, formatted answer from their ERP data.
-**Current focus:** Wave 1 - Phases 1, 2, 3 (parallel)
+**Current focus:** Wave 2 - Phases 4, 5 (parallel)
 
 ## Current Position
 
-Phase: 2 of 8 (Schema Infrastructure — Wave 1)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-09 -- Completed 02-02-PLAN.md (Domain Classification & ClassTypeID Reference)
+Phase: 5 of 8 (Financial Foundation — Wave 2)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-09 -- Completed 05-01-PLAN.md (GL Account Verification & Field Reference)
 
 Progress: [████░░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 4min29s
-- Total execution time: 0.37 hours
+- Total plans completed: 6
+- Average duration: 4min13s
+- Total execution time: 0.42 hours
 
 **By Phase:**
 
@@ -30,10 +30,11 @@ Progress: [████░░░░░░] 50%
 | 01 | 1 | 2min43s | 2min43s |
 | 02 | 2 | 8min26s | 4min13s |
 | 03 | 2 | 11min27s | 5min44s |
+| 05 | 1 | 2min36s | 2min36s |
 
 **Recent Trend:**
-- Last 5 plans: 2min43s, 4min12s, 7min15s, 3min45s, 4min41s
-- Trend: Quick fixes and reference compilation consistently under 5min; documentation formalization tasks take longer
+- Last 5 plans: 4min12s, 7min15s, 3min45s, 4min41s, 2min36s
+- Trend: Surgical edits and targeted corrections consistently under 3min; documentation formalization 4-7min
 
 *Updated after each plan completion*
 
@@ -58,6 +59,8 @@ Recent decisions affecting current work:
 - [02-01]: 187 schema files and 89 FK relationships verified for internal consistency - optional database verification recommended from Windows environment
 - [02-02]: Standalone ClassTypeID reference created instead of embedding in field_values.md - 350+ entries too large for mixed-content file
 - [02-02]: ClassTypeID reference organized by ID range categories mirroring Control's architectural design intent
+- [05-01]: Use exact GLAccount.AccountName from database, not wiki aliases - source of truth for account names
+- [05-01]: EntryType values marked MEDIUM confidence - inferred from Description patterns, not official docs
 
 ### Pending Todos
 
@@ -70,11 +73,12 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 02-02-PLAN.md (Domain Classification & ClassTypeID Reference)
+Stopped at: Completed 05-01-PLAN.md (GL Account Verification & Field Reference)
 Resume file: None
 
 **Phase 1 Status:** Complete (1/1 plans done) — Verified 2026-02-08 (gaps fixed by orchestrator)
 **Phase 2 Status:** Complete (2/2 plans done) — Schema & FK verified, ClassTypeID reference compiled 2026-02-09
 **Phase 3 Status:** Complete (2/2 plans done) — CHAPI, Crystal Reports, Macros formalized 2026-02-08
+**Phase 5 Status:** In progress (1/2 plans done) — System accounts corrected, Ledger field reference added 2026-02-09
 **Wave 1 Status:** Complete (3/3 phases done) — Core Skill, Schema, Wiki all verified/formalized
-**Next up:** Wave 2 (Phases 4, 5) — Query patterns and skill assembly
+**Next up:** 05-02 (Payment GL Offset Logic) — Deposit workflow, TenderType, Payment ClassTypeID documentation
