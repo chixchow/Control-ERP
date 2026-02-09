@@ -9,10 +9,10 @@ Requirements for read-layer domain expansion. Each maps to roadmap phases.
 
 ### Financial Depth
 
-- [ ] **FIN-04**: AR aging report matching Control's built-in report (current, 30, 60, 90+ day buckets with customer breakdown)
-- [ ] **FIN-05**: AP tracking and vendor payment queries (outstanding payables, vendor balances, payment history)
-- [ ] **FIN-06**: P&L reporting with product-line breakdown (revenue, COGS, gross margin by product category)
-- [ ] **FIN-07**: Cash flow and bank balance queries (current bank balances, cash in/out summary, payment forecast)
+- [x] **FIN-04**: AR aging report matching Control's built-in report (current, 30, 60, 90+ day buckets with customer breakdown)
+- [x] **FIN-05**: AP tracking and vendor payment queries (outstanding payables, vendor balances, payment history)
+- [x] **FIN-06**: P&L reporting with product-line breakdown (revenue, COGS, gross margin by product category)
+- [x] **FIN-07**: Cash flow and bank balance queries (current bank balances, cash in/out summary, payment forecast)
 
 ### Customer Intelligence
 
@@ -78,10 +78,10 @@ Explicitly excluded. Documented to prevent scope creep.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FIN-04 | Phase 9 | Pending |
-| FIN-05 | Phase 9 | Pending |
-| FIN-06 | Phase 9 | Pending |
-| FIN-07 | Phase 9 | Pending |
+| FIN-04 | Phase 9 | Complete |
+| FIN-05 | Phase 9 | Complete |
+| FIN-06 | Phase 9 | Complete |
+| FIN-07 | Phase 9 | Complete |
 | CUST-01 | Phase 10 | Pending |
 | CUST-02 | Phase 10 | Pending |
 | CUST-03 | Phase 10 | Pending |
@@ -100,4 +100,4 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-09 after roadmap creation*
+*Last updated: 2026-02-09 after Phase 9 completion*

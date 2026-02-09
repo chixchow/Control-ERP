@@ -22,7 +22,7 @@ See: .planning/milestones/v1.0-ROADMAP.md
 
 **Phase Numbering:** Integer phases (9, 10, 11, 12, 13). Decimal phases (e.g., 10.1) reserved for urgent insertions.
 
-- [ ] **Phase 9: Financial Depth** - Extend financial skill with AR aging, AP tracking, P&L breakdown, and cash flow
+- [x] **Phase 9: Financial Depth** - Extend financial skill with AR aging, AP tracking, P&L breakdown, and cash flow
 - [ ] **Phase 10: Customer Intelligence** - New skill for customer lookup, segmentation, CLV, and churn detection
 - [ ] **Phase 11: Inventory Management** - New skill for stock levels, reorder monitoring, and warehouse planning
 - [ ] **Phase 12: Production Workflow** - New skill for artwork pipeline, station workload, and labor analysis
@@ -59,8 +59,8 @@ START ----+                            +---> Phase 11 (Inventory) ---> Phase 12 
 **Plans**: 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md -- AR detail with customer breakdown + AP detail with vendor breakdown
-- [ ] 09-02-PLAN.md -- P&L analysis with comparison periods + cash flow and bank balance queries
+- [x] 09-01-PLAN.md -- AR detail with customer breakdown + AP detail with vendor breakdown
+- [x] 09-02-PLAN.md -- P&L analysis with comparison periods + cash flow and bank balance queries
 
 **Critical pitfalls:**
 - GL sign convention inversion: Revenue stored as negative credits. Must use SUM(-Amount) for GLClassificationType IN (4000, 4001).
@@ -147,7 +147,7 @@ Phases execute in numeric order with parallelization: 9+10 (parallel) -> 11 -> 1
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 9. Financial Depth | v1.1 | 0/2 | Planned | - |
+| 9. Financial Depth | v1.1 | 2/2 | Complete | 2026-02-09 |
 | 10. Customer Intelligence | v1.1 | 0/TBD | Not started | - |
 | 11. Inventory Management | v1.1 | 0/TBD | Not started | - |
 | 12. Production Workflow | v1.1 | 0/TBD | Not started | - |
@@ -155,4 +155,4 @@ Phases execute in numeric order with parallelization: 9+10 (parallel) -> 11 -> 1
 
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-02-09*
+*Last updated: 2026-02-09 after Phase 9 completion*
