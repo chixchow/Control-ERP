@@ -885,6 +885,121 @@ WHERE ga.GLClassificationType IN (4000, 4001, 5001, 5002)
     AND l.EntryDateTime BETWEEN @StartDate AND @EndDate
 ```
 
+### P&L Analysis
+
+#### P&L with Year-over-Year Comparison
+
+Compare current YTD vs prior year same-period (apples-to-apples using same day-of-year cutoff). Default period: year-to-date.
+
+```sql
+-- Year-over-year P&L comparison (current YTD vs prior YTD, same day-of-year cutoff)
+SELECT
+    CASE ga.GLClassificationType
+        WHEN 4000 THEN '1-Product Revenue'
+        WHEN 4001 THEN '2-Other Income'
+        WHEN 5001 THEN '3-Cost of Goods Sold'
+        WHEN 5002 THEN '4-Operating Expenses'
+    END AS Category,
+    ga.AccountName,
+    SUM(CASE WHEN YEAR(l.EntryDateTime) = YEAR(GETDATE())
+        THEN CASE WHEN ga.GLClassificationType IN (4000, 4001) THEN -l.Amount ELSE l.Amount END
+        ELSE 0 END) AS CurrentYear,
+    SUM(CASE WHEN YEAR(l.EntryDateTime) = YEAR(GETDATE()) - 1
+        THEN CASE WHEN ga.GLClassificationType IN (4000, 4001) THEN -l.Amount ELSE l.Amount END
+        ELSE 0 END) AS PriorYear
+FROM GL l
+INNER JOIN GLAccount ga ON l.GLAccountID = ga.ID
+WHERE ga.GLClassificationType IN (4000, 4001, 5001, 5002)
+    AND l.EntryDateTime BETWEEN DATEADD(yy, DATEDIFF(yy, 0, GETDATE()) - 1, 0) AND GETDATE()
+    AND DATEPART(DAYOFYEAR, l.EntryDateTime) <= DATEPART(DAYOFYEAR, GETDATE())
+GROUP BY ga.GLClassificationType, ga.AccountName
+HAVING SUM(l.Amount) != 0
+ORDER BY Category
+```
+
+**Note:** The prior year comparison uses the same day-of-year cutoff (`DATEPART(DAYOFYEAR)`) to ensure an apples-to-apples comparison. For example, if today is February 9, both years include only Jan 1 through Feb 9.
+
+#### P&L with Month-over-Month Comparison
+
+Compare current month vs prior month. Useful for trend analysis.
+
+```sql
+-- Month-over-month P&L comparison
+DECLARE @CurrentMonthStart DATETIME = DATEADD(mm, DATEDIFF(mm, 0, GETDATE()), 0);
+DECLARE @PriorMonthStart DATETIME = DATEADD(mm, -1, @CurrentMonthStart);
+DECLARE @PriorMonthEnd DATETIME = DATEADD(dd, -1, @CurrentMonthStart);
+
+SELECT
+    CASE ga.GLClassificationType
+        WHEN 4000 THEN '1-Product Revenue'
+        WHEN 4001 THEN '2-Other Income'
+        WHEN 5001 THEN '3-Cost of Goods Sold'
+        WHEN 5002 THEN '4-Operating Expenses'
+    END AS Category,
+    ga.AccountName,
+    SUM(CASE WHEN l.EntryDateTime >= @CurrentMonthStart
+        THEN CASE WHEN ga.GLClassificationType IN (4000, 4001) THEN -l.Amount ELSE l.Amount END
+        ELSE 0 END) AS CurrentMonth,
+    SUM(CASE WHEN l.EntryDateTime BETWEEN @PriorMonthStart AND @PriorMonthEnd
+        THEN CASE WHEN ga.GLClassificationType IN (4000, 4001) THEN -l.Amount ELSE l.Amount END
+        ELSE 0 END) AS PriorMonth
+FROM GL l
+INNER JOIN GLAccount ga ON l.GLAccountID = ga.ID
+WHERE ga.GLClassificationType IN (4000, 4001, 5001, 5002)
+    AND l.EntryDateTime >= @PriorMonthStart
+GROUP BY ga.GLClassificationType, ga.AccountName
+HAVING SUM(l.Amount) != 0
+ORDER BY Category
+```
+
+#### Product-Line Margin Analysis
+
+Revenue can be broken down by product line at the GL level, but COGS is aggregate. Run **both queries** to get the full margin picture.
+
+**Query A -- Revenue Breakdown by Product Line:**
+```sql
+-- Revenue breakdown by product line (GLClassificationType 4000)
+-- NOTE: COGS is aggregate (not per-product) at GL level. Per-product COGS requires TransDetail analysis.
+DECLARE @StartDate DATETIME = DATEADD(yy, DATEDIFF(yy, 0, GETDATE()), 0);  -- YTD default
+DECLARE @EndDate DATETIME = GETDATE();
+
+SELECT
+    ga.AccountName AS ProductLine,
+    SUM(-l.Amount) AS Revenue
+FROM GL l
+INNER JOIN GLAccount ga ON l.GLAccountID = ga.ID
+WHERE ga.GLClassificationType = 4000
+    AND l.EntryDateTime BETWEEN @StartDate AND @EndDate
+GROUP BY ga.AccountName
+ORDER BY Revenue DESC;
+```
+
+**Query B -- Aggregate COGS (separate, cannot be broken by product):**
+```sql
+-- Separate query for total COGS (cannot be broken by product at GL level)
+DECLARE @StartDate DATETIME = DATEADD(yy, DATEDIFF(yy, 0, GETDATE()), 0);  -- YTD default
+DECLARE @EndDate DATETIME = GETDATE();
+
+SELECT
+    SUM(l.Amount) AS TotalCOGS
+FROM GL l
+INNER JOIN GLAccount ga ON l.GLAccountID = ga.ID
+WHERE ga.GLClassificationType = 5001
+    AND l.EntryDateTime BETWEEN @StartDate AND @EndDate;
+```
+
+**How to use:** Run Query A for per-product revenue, Query B for total COGS, then compute gross margin = (Total Revenue from A) - (Total COGS from B). This gives aggregate gross margin percentage but not per-product margins.
+
+> **COGS-to-product mapping:** Revenue GL accounts have per-product NodeIDs (e.g., 10116=DyeSub, 10120=Table Covers), but COGS accounts (GLClassificationType 5001) are aggregate. Product-line P&L shows revenue breakdown by product with total COGS. Per-product margin requires TransDetail-level cost analysis (different approach, not GL-based).
+
+#### P&L Formatting Guidance
+
+- **Default date range:** Year-to-date (`DATEADD(yy, DATEDIFF(yy, 0, GETDATE()), 0)` to `GETDATE()`)
+- **Currency format:** $1,234.56 with comma separators
+- **Negative numbers:** Accounting parentheses -- ($1,234.56)
+- **Computed rows:** Always include Gross Margin (Revenue - COGS) and Net Income (Revenue - COGS - OpEx)
+- **Result sets:** Full list, no truncation
+
 ### Balance Sheet Key Accounts
 ```sql
 SELECT
@@ -949,6 +1064,10 @@ Gross margin ~82% in recent periods.
 | "AP for [vendor]" / "bills for [vendor]" | AP Detail filtered by vendor (LIKE on CompanyName) |
 | "vendor payment history" / "payments to [vendor]" | Vendor Payment History |
 | "P&L" / "profit and loss" / "income statement" | P&L Summary or Full P&L |
+| "P&L comparison" / "P&L vs last year" / "year over year P&L" | P&L Analysis → YoY Comparison |
+| "P&L this month vs last month" / "monthly P&L comparison" | P&L Analysis → MoM Comparison |
+| "P&L by product line" / "margin by product" / "product profitability" | Product-Line Margin Analysis (Query A + Query B) |
+| "gross margin by product" | Product-Line Margin Analysis + COGS limitation note |
 | "Revenue by product" (GL-based) | Revenue by Product Line |
 | "What's our gross margin?" | P&L Summary → GrossProfit/TotalRevenue |
 | "Cash position" / "how much cash" | Balance Sheet Key Accounts (cash nodes) |
