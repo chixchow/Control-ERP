@@ -76,11 +76,11 @@ Plans:
   3. CHAPI architecture documented with HTTP endpoint details, SQLBridge functions, and import stored procedure catalog -- a developer reading the docs could understand how to call CHAPI
   4. Crystal Reports SQL patterns extracted and cross-referenced with actual report analysis in `output/reports/`
   5. Macro automation system documented with trigger events (95 types) and RuleAction types
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 03-01: Verify wiki crawl completeness and extract quality
-- [ ] 03-02: Formalize CHAPI, Crystal Reports, and macro automation references
+- [ ] 03-01-PLAN.md — Verify wiki crawl completeness (1,769 pages) and audit all 12 extract quality
+- [ ] 03-02-PLAN.md — Formalize CHAPI architecture, Crystal Reports SQL patterns, and macro automation references
 
 ### Phase 4: Sales Skill Verification
 **Goal**: The control-erp-sales skill is verified complete with all product identification patterns documented and revenue queries that match Control reports
