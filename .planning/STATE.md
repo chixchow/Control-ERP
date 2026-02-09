@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** Any FLS team member can ask a business question in plain English and get an accurate, formatted answer from their ERP data.
-**Current focus:** Wave 3 - Phases 6, 7 (parallel)
+**Current focus:** Wave 4 - Phase 8 (Documentation & Milestone Close)
 
 ## Current Position
 

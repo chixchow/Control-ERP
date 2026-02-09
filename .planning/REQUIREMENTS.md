@@ -47,12 +47,12 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 
 ### Test Suite & Validation
 
-- [ ] **TEST-01**: Phase 2 test suite (21 test cases) executed with pass/fail scorecard
-- [ ] **TEST-02**: Revenue baseline test — "Total sales 2025" returns $3,053,541.85 (±1%)
-- [ ] **TEST-03**: Product breakdown test — DyeSub Print categories match Control report totals
-- [ ] **TEST-04**: Customer revenue test — Top 10 customers by revenue match Control report
-- [ ] **TEST-05**: Date range tests — monthly, quarterly, YoY queries return consistent totals
-- [ ] **TEST-06**: Known-gotcha tests — TransDetailParam without IsActive filter, SubTotalPrice not TotalPrice, SaleDate not OrderCreatedDate
+- [x] **TEST-01**: Phase 2 test suite (21 test cases) executed with pass/fail scorecard
+- [x] **TEST-02**: Revenue baseline test — "Total sales 2025" returns $3,053,541.85 (±1%)
+- [x] **TEST-03**: Product breakdown test — DyeSub Print categories match Control report totals
+- [x] **TEST-04**: Customer revenue test — Top 10 customers by revenue match Control report
+- [x] **TEST-05**: Date range tests — monthly, quarterly, YoY queries return consistent totals
+- [x] **TEST-06**: Known-gotcha tests — TransDetailParam without IsActive filter, SubTotalPrice not TotalPrice, SaleDate not OrderCreatedDate
 
 ### Documentation & Maintainability
 
@@ -147,12 +147,12 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 | GLOSS-01 | Phase 6: Glossary Skill Creation | Complete |
 | GLOSS-02 | Phase 6: Glossary Skill Creation | Complete |
 | GLOSS-03 | Phase 6: Glossary Skill Creation | Complete |
-| TEST-01 | Phase 7: Test Suite Execution | Pending |
-| TEST-02 | Phase 7: Test Suite Execution | Pending |
-| TEST-03 | Phase 7: Test Suite Execution | Pending |
-| TEST-04 | Phase 7: Test Suite Execution | Pending |
-| TEST-05 | Phase 7: Test Suite Execution | Pending |
-| TEST-06 | Phase 7: Test Suite Execution | Pending |
+| TEST-01 | Phase 7: Test Suite Execution | Complete |
+| TEST-02 | Phase 7: Test Suite Execution | Complete |
+| TEST-03 | Phase 7: Test Suite Execution | Complete |
+| TEST-04 | Phase 7: Test Suite Execution | Complete |
+| TEST-05 | Phase 7: Test Suite Execution | Complete |
+| TEST-06 | Phase 7: Test Suite Execution | Complete |
 | DOC-01 | Phase 8: Documentation & Milestone Close | Pending |
 | DOC-02 | Phase 8: Documentation & Milestone Close | Pending |
 | DOC-03 | Phase 8: Documentation & Milestone Close | Pending |
