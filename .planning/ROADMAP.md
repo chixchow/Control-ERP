@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Core Skill Verification** - Verify control-erp-core skill completeness and structure the knowledge log
 - [ ] **Phase 2: Schema Infrastructure** - Validate schema docs, FK mappings, domain classification, and ClassTypeID reference
-- [ ] **Phase 3: Wiki Knowledge Formalization** - Formalize wiki crawl outputs into organized, skill-consumable references
+- [x] **Phase 3: Wiki Knowledge Formalization** - Formalize wiki crawl outputs into organized, skill-consumable references
 - [ ] **Phase 4: Sales Skill Verification** - Verify control-erp-sales skill and document all product identification patterns
 - [ ] **Phase 5: Financial Foundation** - Document GL/Ledger architecture, system accounts, and payment logic in the financial skill
 - [ ] **Phase 6: Glossary Skill Creation** - Build control-erp-glossary with FLS business language and Control technical terminology
@@ -79,8 +79,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Verify wiki crawl completeness (1,769 pages) and audit all 12 extract quality
-- [ ] 03-02-PLAN.md — Formalize CHAPI architecture, Crystal Reports SQL patterns, and macro automation references
+- [x] 03-01-PLAN.md — Verify wiki crawl completeness (1,769 pages) and audit all 12 extract quality
+- [x] 03-02-PLAN.md — Formalize CHAPI architecture, Crystal Reports SQL patterns, and macro automation references
 
 ### Phase 4: Sales Skill Verification
 **Goal**: The control-erp-sales skill is verified complete with all product identification patterns documented and revenue queries that match Control reports
@@ -167,7 +167,7 @@ Wave 1 (parallel): 1, 2, 3 -> Wave 2 (parallel): 4, 5 -> Wave 3 (parallel): 6, 7
 |-------|----------------|--------|-----------|
 | 1. Core Skill Verification | 1/1 | Complete | 2026-02-08 |
 | 2. Schema Infrastructure | 0/2 | Not started | - |
-| 3. Wiki Knowledge Formalization | 0/2 | Not started | - |
+| 3. Wiki Knowledge Formalization | 2/2 | Complete | 2026-02-08 |
 | 4. Sales Skill Verification | 0/2 | Not started | - |
 | 5. Financial Foundation | 0/2 | Not started | - |
 | 6. Glossary Skill Creation | 0/1 | Not started | - |

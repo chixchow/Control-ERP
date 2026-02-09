@@ -33,11 +33,11 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 
 ### Wiki Knowledge Base
 
-- [ ] **WIKI-01**: Wiki crawled — 1,769 pages across control/reports/support subdomains
-- [ ] **WIKI-02**: 6 knowledge extracts produced covering database integration, orders/accounting, production/inventory, CRM/payroll, SQL queries, and troubleshooting
-- [ ] **WIKI-03**: CHAPI architecture documented from wiki — HTTP endpoint, SQLBridge functions, import stored procedures
-- [ ] **WIKI-04**: Crystal Reports SQL patterns extracted from wiki
-- [ ] **WIKI-05**: Macro automation system documented (95 trigger events, RuleAction types)
+- [x] **WIKI-01**: Wiki crawled — 1,769 pages across control/reports/support subdomains
+- [x] **WIKI-02**: 6 knowledge extracts produced covering database integration, orders/accounting, production/inventory, CRM/payroll, SQL queries, and troubleshooting
+- [x] **WIKI-03**: CHAPI architecture documented from wiki — HTTP endpoint, SQLBridge functions, import stored procedures
+- [x] **WIKI-04**: Crystal Reports SQL patterns extracted from wiki
+- [x] **WIKI-05**: Macro automation system documented (95 trigger events, RuleAction types)
 
 ### Glossary
 
@@ -139,11 +139,11 @@ Milestone 1 formalizes and validates the substantial work already completed. Ski
 | FIN-01 | Phase 5: Financial Foundation | Pending |
 | FIN-02 | Phase 5: Financial Foundation | Pending |
 | FIN-03 | Phase 5: Financial Foundation | Pending |
-| WIKI-01 | Phase 3: Wiki Knowledge Formalization | Pending |
-| WIKI-02 | Phase 3: Wiki Knowledge Formalization | Pending |
-| WIKI-03 | Phase 3: Wiki Knowledge Formalization | Pending |
-| WIKI-04 | Phase 3: Wiki Knowledge Formalization | Pending |
-| WIKI-05 | Phase 3: Wiki Knowledge Formalization | Pending |
+| WIKI-01 | Phase 3: Wiki Knowledge Formalization | Complete |
+| WIKI-02 | Phase 3: Wiki Knowledge Formalization | Complete |
+| WIKI-03 | Phase 3: Wiki Knowledge Formalization | Complete |
+| WIKI-04 | Phase 3: Wiki Knowledge Formalization | Complete |
+| WIKI-05 | Phase 3: Wiki Knowledge Formalization | Complete |
 | GLOSS-01 | Phase 6: Glossary Skill Creation | Pending |
 | GLOSS-02 | Phase 6: Glossary Skill Creation | Pending |
 | GLOSS-03 | Phase 6: Glossary Skill Creation | Pending |
