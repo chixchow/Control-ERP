@@ -55,7 +55,7 @@ Any FLS team member can ask a business question in plain English and get an accu
 
 <!-- Current scope. Building toward these. -->
 
-**Read-Layer Skills (Milestone 2):**
+**v1.1 — Read-Layer Build-Out (Milestone 2, 14 requirements):**
 - [ ] **FIN-04**: AR aging report matching Control's built-in report
 - [ ] **FIN-05**: AP tracking and vendor payment queries
 - [ ] **FIN-06**: P&L reporting with product-line breakdown
@@ -69,9 +69,11 @@ Any FLS team member can ask a business question in plain English and get an accu
 - [ ] **PROD-01**: Artwork status and approval pipeline queries
 - [ ] **PROD-02**: Station workload and scheduling queries
 - [ ] **PROD-03**: Time tracking and labor analysis from TimeCard tables
+- [ ] **RPT-01**: Crystal Report catalog — what exists, parameters, when to use vs. custom query
+
+**Future Read-Layer (deferred from Milestone 2):**
 - [ ] **HR-01**: Employee, payroll, PTO queries (read-only)
 - [ ] **HR-02**: Timecard reporting and labor cost analysis
-- [ ] **RPT-01**: Crystal Report catalog — what exists, parameters, when to use vs. custom query
 - [ ] **ANLYT-01**: Sales forecasting based on historical patterns
 - [ ] **ANLYT-02**: Trend analysis and seasonal pattern detection
 - [ ] **DASH-01**: Interactive executive dashboard (React artifacts)
@@ -95,6 +97,7 @@ Any FLS team member can ask a business question in plain English and get an accu
 - **Mobile app** — Web/CLI interface only. Mobile can come later.
 - **Direct SQL writes** — ALL writes go through CHAPI. No exceptions. Ever. This is a hard safety rule.
 - **Third-party integrations** — No Salesforce, QuickBooks, etc. Control is the system of record.
+- **Division-level reporting** — Apparel vs Banner division breakdowns are a future nice-to-have. This milestone covers company-wide queries.
 
 ## Context
 
@@ -112,7 +115,7 @@ Any FLS team member can ask a business question in plain English and get an accu
 **Team:**
 - Cain (CMO/President) — project owner, primary user
 - Taylor, Gretel — business partners, stakeholders for validation gates
-- Gretel — accounting team, validates financial queries
+- Gretel — manages Apparel Division
 
 **Current State (after v1.0):**
 - `control-erp-core` skill: Complete, validated to 99.98% against known 2025 financials
@@ -151,5 +154,9 @@ Any FLS team member can ask a business question in plain English and get an accu
 | Cross-reference validation when MCP unavailable | Validated against 2026-02-07 live MCP results from Mac environment | ✓ Good — historical 2025 data is stable |
 | Glossary uses cross-reference pattern | Points to owning skills rather than duplicating query templates | ✓ Good — single source of truth maintained |
 
+| Defer HR/Payroll to future milestone | Lower priority than finance/customer/ops, not actively queried | — Pending |
+| Defer analytics/dashboards to future milestone | Focus on query accuracy first, analytics is a nice-to-have | — Pending |
+| All domains held to same validation standard | Every skill must validate against Control reports, not just financial | ✓ Good — consistent with v1.0 approach |
+
 ---
-*Last updated: 2026-02-09 after v1.0 milestone*
+*Last updated: 2026-02-09 after v1.1 milestone start*

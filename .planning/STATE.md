@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** Any FLS team member can ask a business question in plain English and get an accurate, formatted answer from their ERP data.
-**Current focus:** Planning next milestone (v1.1 Read-Layer Build-Out)
+**Current focus:** Milestone v1.1 — Read-Layer Build-Out
 
 ## Current Position
 
-Phase: 8 of 8 completed (v1.0 milestone)
-Plan: N/A — milestone complete
-Status: Ready for next milestone
-Last activity: 2026-02-09 — v1.0 milestone archived and tagged
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-09 — Milestone v1.1 started
 
-Progress: [██████████] 100% (v1.0)
+Progress: [░░░░░░░░░░] 0% (v1.1)
 
 ## Performance Metrics
 
@@ -32,17 +32,17 @@ All v1.0 decisions archived in milestones/v1.0-ROADMAP.md.
 
 ### Pending Todos
 
-None — ready for Milestone 2 planning.
+None — defining requirements.
 
 ### Blockers/Concerns
 
-- None — ready for `/gsd:new-milestone`
+- None
 
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: v1.0 milestone archived, ready for next milestone
+Stopped at: Defining v1.1 requirements and roadmap
 Resume file: None
 
 **v1.0 Status:** SHIPPED (8 phases, 15 plans, 35/35 requirements)
-**Next up:** `/gsd:new-milestone` to define Milestone 2 scope and requirements
+**v1.1 Scope:** 14 requirements across 5 domains (Financial, Customer, Inventory, Production, Reports)
