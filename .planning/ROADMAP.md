@@ -60,11 +60,11 @@ Plans:
   2. `output/relationships.md` contains both explicit FK relationships (from sys.foreign_keys) and inferred relationships (from naming patterns like AccountID -> Account.ID)
   3. `output/domains.md` groups every table into a functional domain with a description of what that domain covers
   4. ClassTypeID reference (350+ entries from wiki) exists in a structured, skill-consumable format -- not a raw wiki dump but an organized lookup table
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 02-01: Verify schema completeness across all 187+ tables
-- [ ] 02-02: Validate relationships, domain classification, and compile ClassTypeID reference
+- [ ] 02-01-PLAN.md — Verify schema completeness (10 tables spot-checked) and FK relationship completeness against live database
+- [ ] 02-02-PLAN.md — Fix domain classification table count, compile standalone ClassTypeID reference (350+ entries)
 
 ### Phase 3: Wiki Knowledge Formalization
 **Goal**: Wiki crawl outputs are verified complete and formalized into organized references that downstream skills and documentation can consume
