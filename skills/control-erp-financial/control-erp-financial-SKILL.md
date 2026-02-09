@@ -336,6 +336,106 @@ Types: `Check`, `Cash`, `Capture` (CC auth), `MC/Visa`, `Amex`, `Discover`,
 - "Voided Payment on Order NNNNN" — payment reversal
 - "Finance Charge" — late fees on AR accounts
 
+### Deposit Workflow (Undeposited -> Bank)
+
+Payments go through a two-step deposit process:
+
+**Step 1 - Payment Received** (documented in Paths A/B above):
+```
+Debit  Undeposited [Method] (92/93/etc.)  $payment
+Credit Order Prepayments (24) or AR (14)  $payment
+```
+
+**Step 2 - Deposit Processed**:
+```
+Debit  Cash-Checking (90)                 $deposit_total
+Credit Undeposited [Method] (92/93/etc.)  $deposit_total
+```
+
+Key points:
+- Deposits group multiple payments into a single batch via `Ledger.DepositJournalID`
+- `Payment.Undeposited` flag (bit) indicates whether a payment has been deposited yet (1 = not deposited, 0 = deposited)
+- Deposits are created in Control via the "Make Deposit" function
+- Until deposited, funds sit in the Undeposited account and do NOT appear in Cash-Checking
+- Once deposited, all payments in the batch share the same `DepositJournalID` value
+
+**Query to find undeposited payments:**
+```sql
+SELECT p.ID, p.Amount, p.TenderType, ga.AccountName AS UndepositedAccount
+FROM Payment p
+INNER JOIN GLAccount ga ON p.BankAccountID = ga.ID
+WHERE p.Undeposited = 1 AND p.IsActive = 1
+```
+
+**Query to find deposit batch entries:**
+```sql
+SELECT l.ID, l.GLAccountID, ga.AccountName, l.Amount, l.DepositJournalID, l.EntryDateTime
+FROM Ledger l
+INNER JOIN GLAccount ga ON l.GLAccountID = ga.ID
+WHERE l.DepositJournalID IS NOT NULL
+  AND l.GLAccountID IN (90, 91, 92, 93, 543, 10137, 10528, 10530, 10531)
+ORDER BY l.DepositJournalID DESC, l.ID
+```
+
+### Payment.TenderType Reference
+
+The `Payment.TenderType` field indicates the payment method and determines the default BankAccountID (undeposited account).
+
+| TenderType | Payment Method | Default BankAccountID |
+|------------|---------------|----------------------|
+| 0 | Cash | 91 (Undeposited Cash) |
+| 1 | Check | 93 (Undeposited Checks) |
+| 2 | Credit Card (MC/Visa) | 92 (Undeposited MCVisa) |
+| 4 | Online/Authorize.net | 10528 (Undeposited Authorize.net) |
+| 5 | ACH/Wire | 90 (Cash-Checking direct) |
+| 7 | Wire Transfer | 90 (Cash-Checking direct) |
+| 8 | Other/Legacy | varies |
+| NULL | System entries | N/A (master payments, failed, etc.) |
+
+**Note:** TenderType values 3 and 6 are not observed at FLS. ACH (5) and Wire (7) post directly to Cash-Checking (90), bypassing the undeposited step.
+
+**Query to analyze payment methods:**
+```sql
+SELECT p.TenderType, COUNT(*) AS Cnt, MIN(ga.AccountName) AS TypicalBankAccount
+FROM Payment p
+LEFT JOIN GLAccount ga ON p.BankAccountID = ga.ID
+WHERE p.IsActive = 1
+GROUP BY p.TenderType
+ORDER BY p.TenderType
+```
+
+### Payment ClassTypeID Reference
+
+The `Payment.ClassTypeID` field indicates the payment subtype. Most payment queries should filter to ClassTypeID IN (20001, 20009) for individual order and bill payments.
+
+| ClassTypeID | Type | Description |
+|-------------|------|-------------|
+| 20000 | Master Payment | Parent grouping for multi-order payments |
+| 20001 | Order Payment | Payment applied to a specific order |
+| 20002 | Credit Payment | Payment from customer credit balance |
+| 20003 | Change Returned | Cash change given back to customer |
+| 20004 | Order Refund | Refund issued against an order |
+| 20005 | Credit Refund | Refund issued from customer credit |
+| 20006 | Credit Memo Payment | Payment created from credit memo |
+| 20007 | Failed Payment | Payment attempt that failed (CC decline, etc.) |
+| 20009 | Bill Payment | Payment made to a vendor for a bill |
+| 20011 | Overpayment | Payment exceeding balance due |
+| 20012 | Payment to Credit | Payment transferred to customer credit balance |
+| 20032 | Master Payment Authorization | CC authorization grouping for multi-order auth |
+| 20037 | Master Bill Payment | Parent grouping for multi-bill payments |
+| 20038 | Receipt | Receiving document payment (PO receipts) |
+
+**For most payment queries, filter to ClassTypeID IN (20001, 20009)** to get individual order and bill payments. Use 20000/20037 when analyzing payment batches.
+
+**Query to analyze payment types:**
+```sql
+SELECT ClassTypeID, COUNT(*) AS Cnt
+FROM Payment
+WHERE IsActive = 1
+GROUP BY ClassTypeID
+ORDER BY ClassTypeID
+```
+
 ---
 
 ## ACCOUNTS RECEIVABLE
