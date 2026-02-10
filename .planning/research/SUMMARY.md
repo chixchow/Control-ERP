@@ -1,464 +1,514 @@
 # Project Research Summary
 
-**Project:** Project Cornerstone v1.1 — Read-Layer Domain Expansion
-**Domain:** Natural Language Query Interface for Control ERP (5 new domain skills)
+**Project:** Project Cornerstone v1.2 — Analytics, Dashboards & Division Support
+**Domain:** ERP Analytics Layer (Brownfield Extension)
 **Researched:** 2026-02-09
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This research synthesizes findings from four parallel research tracks investigating how to expand the validated v1.0 Control ERP natural language interface (4 skills, 35/35 requirements passed) with 5 new domain areas: Financial depth, Customer intelligence, Inventory management, Production workflow, and Reports catalog. The research reveals strong consensus on build approach with one critical architectural disagreement that requires resolution.
+This research establishes the foundation for building analytics, dashboards, and division filtering on top of the validated v1.0/v1.1 system (8 skills, 73+ SQL queries, 99.98% accuracy). The research confirms that **all forecasting can be done in pure T-SQL** using window functions and CTEs for moving averages, seasonal decomposition, and trend detection — no Python or ML libraries required. The recommended architecture creates **two new skills** (`control-erp-analytics` for forecasting/trends, `control-erp-dashboard` for visual/text dashboards) while **modifying core with division filtering framework** that propagates across all existing skills.
 
-**Recommended approach:** Build 3 new standalone skills (customers, inventory, production), extend 1 existing skill (financial with analytical depth), and integrate reports catalog into the existing glossary skill. All new skills follow the validated v1.0 pattern: single SKILL.md files with YAML frontmatter, explicit core skill dependencies, and validation against Control's Crystal Reports before shipping. The inventory and production domains introduce genuinely new table sets (1.2M+ rows of inventory/parts data, 500K+ rows of artwork/station/timecard data) requiring live database discovery queries to validate FLS-specific configurations.
+The **critical architectural decision** is division filtering: all four researchers agree it is cross-cutting and must be designed as a framework **before** other features. The Cyrious wiki reveals a non-obvious pitfall that would destroy accuracy: `DivisionID` is nullable throughout the database, and **every query must use `COALESCE(DivisionID, 10)`** or silently drop records with NULL divisions. This is the v1.2 equivalent of the v1.0 TransDetailParam IsActive bug ($1.3M discrepancy). Additionally, `TransHeader` has THREE division fields (DivisionID, ProductionDivisionID, ShipFromDivisionID) and `Ledger` has TWO (DivisionID, ProcessedDivisionID) — using the wrong one assigns revenue/costs to the wrong division.
 
-**Key risks and mitigation:** The highest-severity risks are data interpretation pitfalls inherited from v1.0's architecture complexity: (1) GL sign convention inversions that make revenue appear negative, (2) inventory quantity field confusion (OnHand vs Available vs Reserved), (3) TimeCard double-counting due to parent/detail ClassTypeID patterns, and (4) DueDate semantic overloading for AR aging. All four risks have clear prevention strategies validated in existing skills. The second-tier risk is architectural: Stack research recommends creating a separate `control-erp-financial-deep` skill to avoid destabilizing the already-large (857 lines) financial skill, while Architecture research recommends extending the existing financial skill since 80% of "deep" content builds on existing queries. This disagreement must be resolved before Phase 1 begins.
+**Key risks:** (1) Forecasting with only 2 years of data has limited predictive power — use moving averages + confidence ranges, not ML-grade precision. (2) Dashboard metrics must use the EXACT same SQL templates as existing skills or create credibility-destroying inconsistencies. (3) React artifacts in Claude are sandboxed to Recharts + Tailwind + Shadcn UI — no external libraries. The research provides clear mitigations for all risks, and the brownfield context (building on 49 shipped requirements across 8 validated skills) significantly reduces unknowns.
 
 ## Key Findings
 
-### Recommended Stack (from STACK.md)
+### Recommended Stack
 
-Stack research focuses on additions to the validated v1.0 architecture (SQL Server via MCP, YAML skill files, wiki knowledge extracts, Crystal Reports analysis). No new packages or tooling required — all expansion happens through markdown skill files.
+**Consensus:** Pure SQL-based analytics with two-tier dashboard delivery (text + React artifacts). All recommendations work within proven v1.0/v1.1 constraints (SQL Server via MCP MSSQL tools, no Python, no external services). The stack adds NO new dependencies — only T-SQL patterns and pre-installed React artifact libraries.
 
-**Critical architectural decision:**
+**Core technologies:**
 
-Stack research recommends 5 new skill files + 5 reference docs (10 files total):
-1. `control-erp-financial-deep` (NEW skill, 500+ lines) — AR/AP analytics, P&L trending, cash flow, financial KPIs
-2. `control-erp-customers` (NEW skill + references/segmentation_reference.md)
-3. `control-erp-inventory` (NEW skill + references/part_types_reference.md)
-4. `control-erp-production` (NEW skill + 2 reference docs)
-5. `control-erp-reports` (NEW skill, compact catalog)
+- **T-SQL Window Functions (LAG, LEAD, AVG OVER)** — Trend detection, YoY comparison, rolling averages. Already used in production skill (LEAD for dwell time). Proven, well-documented, native to SQL Server 2012+.
 
-**Core technologies (all existing, validated in v1.0):**
-- Database: SQL Server StoreData via MCP MSSQL tools — proven, no changes
-- Skills: YAML SKILL.md + optional references/ — v1.0 shipped without references/; v1.1 introduces them for inventory/production complexity
-- Validation: Crystal Reports cross-check — same pattern as v1.0 (AR report, Sales by Product, WIP reports)
-- Wiki knowledge: 1,769 pages, 6 relevant extracts — production_inventory_knowledge.md, crm_payroll_system_knowledge.md, orders_accounting_knowledge.md provide complete ClassTypeID mappings and query patterns
+- **T-SQL Linear Regression CTEs** — Sales forecasting using least-squares formula. Pure SQL implementation of slope/intercept calculation via SUM/AVG aggregates. Adequate for FLS's $3M revenue scale ($10-15M target).
 
-**Build order recommendation (from Stack):**
-1. Customers (lowest risk, Account table well-understood)
-2. Reports (simple catalog, no new SQL patterns)
-3. Financial-deep (extends validated foundation)
-4. Inventory (new domain, needs live data discovery)
-5. Production (most complex, needs station/artwork discovery)
+- **T-SQL Seasonal Decomposition (Ratio-to-Moving-Average)** — Separate trend from seasonality using monthly revenue % of annual total. With only 24 months of data, limit to simple seasonal indices rather than Holt-Winters.
 
-### Expected Features (from FEATURES.md)
+- **React Artifacts (Recharts + Tailwind CSS + Shadcn UI)** — Visual dashboards. Pre-installed in Claude's artifact sandbox. Data embedded as JavaScript constants (no API calls). Self-contained, renders in Claude.ai and desktop app.
 
-Features research identifies 67 total features across 5 domains (36 table stakes, 31 differentiators, 26 anti-features). The anti-features list is critical — it defines what NOT to build to avoid scope creep into write operations, tax compliance, payroll complexity, and Crystal Reports execution.
+- **Division Filtering via COALESCE Pattern** — `COALESCE(DivisionID, 10)` applied universally to TransHeader, Ledger, Account, Inventory queries. Documented in 40+ Cyrious wiki SQL scripts. Prevents NULL DivisionID exclusion.
+
+**What does NOT change:** SQL Server access (MCP MSSQL tools), existing 8 skills (core, sales, financial, customers, inventory, production, glossary), 73+ validated query templates. Division filtering is additive (adds WHERE clause), forecasting is compositional (builds on existing revenue queries).
+
+**Critical version/configuration notes:**
+- DivisionData table has 3 rows: ID=-1 (system, inactive), ID=? (Company/Banner), ID=? (Apparel). Actual IDs must be discovered via query before implementation.
+- Warehouse.DivisionID is NOT NULL (FK required), unlike TransHeader/Ledger/Account where DivisionID is nullable.
+- Ledger has PayrollID field for identifying payroll-originated GL entries (payroll expense via GL approach).
+
+### Expected Features
+
+**All four researchers converged on the same 5 feature areas** with consistent table stakes vs differentiators vs anti-features. This consensus validates that the requirements are well-understood.
 
 **Must have (table stakes):**
 
-Financial domain (9 features, 4 already built in v1.0):
-- AR/AP aging by customer/vendor (extend existing aggregates to per-entity drill-down)
-- P&L for any date range (already built, ensure shortcuts work)
-- Cash position (already built, add undeposited funds breakdown)
-- Payment history per order (already built)
-- GL entries per order (already built)
+**Sales Forecasting:**
+- Monthly revenue projection for current year (run-rate: YTD pace extrapolated)
+- Same-period comparison with prior year (YoY)
+- Seasonal run-rate projection (accounts for FLS's Aug-Sep peak, Dec trough)
+- Monthly budget vs actual (2026 sales plan from FLS_Sales_Plan_2026.md)
+- Revenue pace by product category (DyeSub categories tracked)
 
-Customer domain (8 features):
-- Customer lookup by name (fuzzy LIKE match on CompanyName)
-- Customer profile (360-view: orders, revenue, payments, contacts, AR)
-- Customer order history (TransHeader Type 1 per AccountID)
-- Top customers (already exists in sales skill Template 6 — reuse)
-- Customer open balances (BalanceDue > 0 aggregation)
+**Trend Detection:**
+- Month-over-month revenue change (% change, already in financial skill MoM P&L)
+- Year-over-year revenue change by month (12-month grid)
+- Product category growth/decline ranking (which categories growing fastest)
+- Customer growth/decline ranking (YoY spend trend per customer)
+- Order volume vs order value trend (more orders or larger orders?)
 
-Inventory domain (7 features):
-- Current stock levels (QuantityAvailable, not QuantityOnHand — critical distinction)
-- Inventory listing (Part + Inventory join with TrackInventory = 1)
-- Inventory value (SUM QuantityBilled * AverageCost, cross-check with GL NodeID 10414)
-- Low stock / reorder alerts (QuantityAvailable <= ReorderPoint)
-- Parts listing (Part table with PartType filter)
-- Inventory by warehouse (FLS has multiple warehouses per division)
+**Executive Dashboards:**
+- Morning sales snapshot (yesterday, MTD, YTD vs plan)
+- Open orders pipeline (count/value by status: New, WIP, Built)
+- AR summary (total AR, aging buckets, top 5 overdue)
+- Artwork pipeline status (proofs pending, stuck >3 days, due today)
+- Cash position (bank balances, undeposited funds)
 
-Production domain (7 features):
-- Artwork status (ArtworkGroup with StatusID < 7 = in progress)
-- WIP orders by station (TransHeader StatusID 1/2 with StationID)
-- Station workload (COUNT/SUM per station)
-- Employee time today/this week (TimeCard with ClassTypeID 20051, avoiding double-count with 20050)
-- Orders due today/this week (TransHeader.DueDate for production deadline)
-- Time clock status (who's clocked in — TimeClockStatus table)
+**Division Filtering:**
+- Division-filtered revenue ("Apparel Division revenue this year")
+- Division-filtered AR ("Apparel Division AR aging")
+- Division-filtered P&L ("Banner Division P&L")
+- Division comparison side-by-side (Banner vs Apparel in one table)
+- Division-aware NL routing ("Gretel's division" = Apparel)
 
-Reports domain (5 features):
-- Report catalog lookup (36 Crystal Reports in 6 categories)
-- Report recommendation (intent-to-report mapping)
-- Report parameter guidance (date range, division, entity filters)
-- Report description (purpose + primary tables + key fields)
+**Payroll Expense (GL-based):**
+- Payroll expense total by pay period (via Ledger.PayrollID IS NOT NULL)
+- Payroll as P&L line item (break out from OpEx)
+- Monthly payroll trend (is payroll increasing?)
+- Payroll as percent of revenue (key profitability metric)
 
-**Should have (competitive differentiators):**
+**Should have (competitive):**
 
-Financial domain:
-- Cash flow summary (payments received vs bills paid — no built-in Control report)
-- Historical AR as of date (GL WHERE EntryDateTime <= @Date — wiki provides SQL)
-- GL integrity checks (7+ integrity check queries from wiki, currently manual)
-- Month-over-month expense trend (P&L with YoY comparison)
+- Weighted moving average forecast (3-month, 6-month WMA for recent momentum)
+- Seasonal decomposition (deseasonalized growth rate)
+- Product mix shift detection (Feather Flags went 32% -> 100% of DyeSub)
+- Forecast confidence range (high/low/expected, not single number)
+- Plan pace indicator (traffic light: on pace, behind pace)
+- Division summary on dashboard (Gretel's division visibility)
+- React visual dashboards (charts: revenue bar + plan line, AR aging, YoY line)
+- Automatic outlier flagging (>2 STDEV from 12-month avg)
+- Rolling 12-month trend (trailing year smoothed)
 
-Customer domain:
-- Customer lifetime value (SUM SubTotalPrice all-time per AccountID)
-- Dormant customer detection (MAX(SaleDate) < DATEADD(MONTH, -6, GETDATE()))
-- Customer concentration analysis (top 10% revenue contribution)
-- RFM analysis (Recency, Frequency, Monetary value)
+**Defer (v2+):**
 
-Inventory domain:
-- Inventory turnover (annual usage / current stock)
-- Slow-moving inventory (MAX(InventoryLog date) > 90 days)
-- Inventory valuation vs GL reconciliation (critical for month-end close)
-- Parts consumption trend (TransPart grouped by month/part)
+- ML-based forecasting (scikit-learn, ARIMA) — cannot run Python in skill execution
+- External data integration (weather, economic indicators) — no ETL pipelines
+- Daily/weekly forecasting — too noisy for FLS's 17 orders/day
+- Inventory demand forecasting — requires BOM/production planning
+- Pipeline-based forecasting from estimates — Control has no deal-stage weighting
+- Real-time dashboard auto-refresh — no WebSocket infrastructure
+- Drag-and-drop dashboard builder — overkill for 3-4 users
+- Deep payroll analysis (timecards, deductions, tax compliance) — deferred until time clock app integration
 
-Production domain:
-- Artwork turnaround time (ArtworkGroupStatusHistory time-to-approval)
-- Station utilization (SUM hours per station / available hours)
-- Estimated vs actual cost comparison (TransPart.EstimatedValue vs PartUsageCard.ActualValue)
-- Artwork bottleneck detection (stuck in Pending Approval > 3 days)
+**Anti-features (explicit scope discipline):**
+- Predictive trend extrapolation with false precision ("Feather Flags will grow 628% next year")
+- Causal trend analysis ("Revenue dropped because of trade show cancellation")
+- Automated alerting/notifications — query-on-demand only
+- Mobile-optimized responsive dashboard — text dashboard is mobile-friendly
+- User-configurable KPI selection — single opinionated dashboard
+- Inter-division elimination accounting — FLS is single legal entity, no consolidation
+- Division-level security/access control — all users see all data
 
-Reports domain:
-- Report output replication (execute SQL equivalent instead of launching Crystal)
-- Cross-report intelligence (metadata search across catalog)
-- Report gap identification (acknowledge when no report exists, offer ad-hoc query)
+### Architecture Approach
 
-**Defer (v2+ or out of scope):**
+**Consensus architecture:** Create two new skills (analytics, dashboard) that build on existing skills, with division filtering as a cross-cutting framework documented in core. All four researchers independently arrived at the same skill topology. This is a **composition layer** on top of validated data access, not new data exploration.
 
-All write operations (bank reconciliation, inventory adjustments, PO creation, station changes, time clock in/out, artwork status changes) — read-only interface only.
+**Major components:**
 
-Tax filing preparation — too high-stakes, Avalara integration required.
+1. **Division Filtering Framework (in control-erp-core)** — Documents `COALESCE(DivisionID, 10)` pattern, maps which DivisionID field to use per table (TransHeader.DivisionID for sales, GL.DivisionID for financial, ProductionDivisionID for production workload), provides injection pattern for WHERE clauses. ~50-80 lines added to core skill. Cross-cutting: all domain skills gain division filtering by referencing this framework.
 
-Payroll queries — sensitive, regulated, complex data model. Separate domain entirely for future milestone.
+2. **Analytics Skill (NEW: control-erp-analytics)** — Forecasting, trend detection, seasonal analysis. SQL templates for moving averages (SMA, WMA), linear regression (slope/intercept via CTEs), seasonal decomposition (ratio-to-moving-average), product-line growth/decline detection, customer trend analysis. Estimated ~400-600 lines. Depends on: core (filters), sales (monthly revenue data), financial (GL revenue), customers (churn/acquisition data). NL triggers: "forecast", "predict", "project", "trend", "growth", "outlook".
 
-Budget vs actual — Control has no budget table.
+3. **Dashboard Skill (NEW: control-erp-dashboard)** — Text dashboard templates (morning report structure), React artifact component patterns (Recharts configs, Tailwind layouts), alert threshold definitions, multi-query orchestration. Estimated ~300-500 lines. Orchestrates ALL domain skills + analytics for unified views. NL triggers: "morning report", "executive summary", "dashboard", "show me a chart". Two-tier output: text (always available) and React visual (Claude.ai/desktop only).
 
-Division-level reporting — deferred per charter (FLS has Banner and Apparel divisions but v1.1 focuses on company-wide queries).
+4. **Glossary Expansion (MODIFY)** — Add ~30-50 NL routing entries for analytics ("forecast sales" -> analytics), dashboard ("morning report" -> dashboard), division filtering ("Apparel sales" -> sales + core division filter). Grows from 671 lines to ~710-720 lines.
 
-HR/Payroll skill — Phase 5 per charter, lower business priority.
+5. **Domain Skill Annotations (MODIFY: minor)** — Each existing skill (sales, financial, customers, inventory, production) adds a note: "Division filtering available — see control-erp-core Division Filtering section." ~5-10 lines per skill. No query template changes (division filtering applied via framework).
 
-### Architecture Approach (from ARCHITECTURE.md)
+**Data flow:**
+- User asks division-filtered question -> Glossary routes to domain skill + notes division context -> Domain skill query template + core division filter clause (`AND COALESCE(th.DivisionID, 10) = @DivisionID`) -> SQL via MCP -> Result
+- User asks for dashboard -> Dashboard skill -> Runs 5-8 queries across multiple skills -> Assembles into text OR generates React artifact with embedded data -> Returns formatted output
+- User asks for forecast -> Analytics skill -> Runs sales Template 2 (monthly revenue) -> Applies moving average/regression/seasonal via SQL CTEs -> Returns projection with confidence context
 
-**CRITICAL CONFLICT WITH STACK:** Architecture research contradicts Stack research on financial depth.
+**Key architectural decisions:**
 
-**Architecture recommendation:** EXTEND existing `control-erp-financial` skill (currently 857 lines) with new sections for cash flow analysis, margin analysis, AR velocity, cash requirements forecast, and bank reconciliation status. Rationale: The financial skill already contains complete GL/Ledger architecture, AR/AP snapshots, P&L templates, balance sheet queries, payment posting patterns, and closeout documentation. The "deep" queries build on these foundations (e.g., cash flow = period-over-period balance sheet changes, AR velocity = DSO calculation using existing AR queries). Creating a separate `control-erp-financial-deep` skill would duplicate 80% of context.
+- **Division filtering is additive, not duplicative.** Single query template gains division filter via WHERE clause injection, not separate division-specific templates. Prevents query explosion (73 templates would become 219 with 3 division variants).
 
-**Stack recommendation:** CREATE new `control-erp-financial-deep` skill (separate file). Rationale: The financial skill is already 2.5x the size of other skills at 857 lines. Adding 500+ lines of analytical queries risks destabilizing a validated skill and pushes the file toward 1,200-1,400 lines (upper limit for context window budgeting). A separate deep skill depends on the foundation and adds analytical capabilities without touching validated SQL.
+- **Dashboard composes existing queries, not new ones.** Dashboard runs the SAME SQL templates from domain skills, then formats results. No separate "dashboard revenue query" that could diverge from validated sales query.
 
-**Resolution required:** This is a genuine architectural tradeoff. Extending avoids duplication and keeps related queries together. Splitting prevents destabilization and maintains skill size consistency. **Recommendation for synthesis:** Follow Architecture's recommendation to EXTEND (the v1.0 pattern was single-file skills, no skill uses references/ yet), but with a safeguard: if the extended financial skill exceeds 1,200 lines, extract low-frequency sections (closeout detail, off-balance-sheet edge cases) into `references/advanced-gl.md` as v1.1's first use of the reference pattern.
+- **Analytics forecasts use core revenue formula for actuals.** The "actuals" portion of any forecast MUST match sales skill Template 2 results exactly. Projection is computed from validated actuals, not parallel data source.
 
-**Consensus on other 4 domains:**
+- **React artifacts embed data, no API calls.** Claude runs SQL queries, receives result arrays, generates React component with data as JavaScript constants. Artifact is self-contained and sandboxed.
 
-Customer Intelligence → CREATE `control-erp-customers` — genuinely new domain, Account-centric queries not covered by sales/financial skills. Both Stack and Architecture agree.
+**Build order (all researchers agree):**
+1. Division filtering FIRST (cross-cutting, required by analytics and dashboard, simplest to validate)
+2. Analytics SECOND (produces forecast data that dashboard consumes, builds on division framework)
+3. Dashboard THIRD (composes all features, needs analytics + division to be stable)
+4. Integration/validation LAST (end-to-end testing, glossary sync)
 
-Inventory → CREATE `control-erp-inventory` — 13 tables, 1.2M rows, no overlap with existing skills. Both agree.
+### Critical Pitfalls
 
-Production → CREATE `control-erp-production` — artwork + stations + time tracking + shipping. Largest new domain. Both agree.
+Research identified 6 critical pitfalls (PITFALLS.md severity scale calibrated to v1.0 TransDetailParam bug = $1.3M discrepancy). The top 3 would destroy accuracy if not mitigated:
 
-Reports Catalog → **DISAGREEMENT:** Stack says create `control-erp-reports` (standalone skill). Architecture says extend `control-erp-glossary` with a Crystal Reports Catalog section (too thin for standalone skill at ~100-150 lines). **Recommendation:** Follow Architecture — the glossary is already a routing skill, and a 36-report catalog naturally fits as a new section. If report catalog grows beyond 36 entries or parameter documentation becomes extensive, split later.
+1. **NULL DivisionID Silently Excludes Records (CRITICAL)** — `WHERE DivisionID = 10` excludes all records where DivisionID IS NULL. At FLS, NULL defaults to Company Division (ID 10), so division-filtered queries silently drop $100K+ in revenue. Cyrious wiki documents this in 40+ SQL scripts, all using `COALESCE(DivisionID, 10)`. **Prevention:** MANDATORY rule: every query filtering or grouping by DivisionID MUST use COALESCE pattern. **Validation:** Sum of per-division revenues must equal total revenue. **Detection:** Compare division totals with unfiltered total — any gap is NULL DivisionIDs being dropped. **Phase:** Division filtering framework, FIRST rule established.
 
-**Major components (skill topology after expansion):**
+2. **DivisionID vs ProductionDivisionID vs ShipFromDivisionID Confusion (HIGH)** — TransHeader has THREE division fields: DivisionID (sales/billing division), ProductionDivisionID (who handles production), ShipFromDivisionID (shipping origin). Using the wrong one assigns revenue to wrong division. Apparel order could have DivisionID=Apparel but ProductionDivisionID=Company. **Prevention:** Revenue queries use TransHeader.DivisionID. Production queries use ProductionDivisionID. Shipping queries use ShipFromDivisionID. GL queries use GL.DivisionID. Document mapping in skill. **Phase:** Division framework, document which field per query type.
 
-```
-control-erp-core (foundation, unchanged)
-  ├── control-erp-sales (unchanged)
-  ├── control-erp-financial (EXTENDED: +5 analytical sections)
-  ├── control-erp-customers (NEW: Account lookup, segmentation, CLV, churn)
-  ├── control-erp-inventory (NEW: stock, parts, warehouse, consumption)
-  ├── control-erp-production (NEW: artwork, stations, time, shipping)
-  └── control-erp-glossary (EXTENDED: +Crystal Reports catalog section)
-```
+3. **Dashboard Metrics Inconsistent with Existing Skills (CRITICAL)** — Dashboard shows "YTD Revenue: $2,980,000" while sales skill returns "$3,052,952.52" for same query. User sees two numbers, trust destroyed. Happens if dashboard uses independent SQL instead of same templates (e.g., missing `SaleDate IS NOT NULL`, using TotalPrice vs SubTotalPrice). **Prevention:** Dashboard MUST use EXACT same SQL patterns as existing skills. Shared query template library. Dashboard metrics trace back to specific skill/template. **Validation:** Dashboard results match individual skill results to the penny. **Detection:** Run dashboard + individual queries side-by-side, any discrepancy >$1 indicates inconsistency. **Phase:** Dashboard phase, before React artifacts built.
 
-**Dependency classification:**
-- Core dependency (HARD): sales, financial, customers — use TransactionType, StatusID, pricing rules on most queries
-- Core dependency (SOFT): inventory, production — use some core concepts but many queries are self-contained
-- Cross-references: customers ↔ sales (for revenue context), inventory ↔ financial (for GL cost accounts), production ↔ inventory (for part usage)
+4. **Ledger DivisionID vs ProcessedDivisionID (HIGH)** — Ledger has TWO division fields: DivisionID (order/entity division) and ProcessedDivisionID (GL posting division). Using wrong one misattributes GL entries. Wiki bug CCON-5479: ProcessedDivisionID not updating for cross-division payments. **Prevention:** Use `COALESCE(GL.DivisionID, 10)` for financial reporting (matches wiki pattern), NOT ProcessedDivisionID. **Phase:** Division framework, financial integration.
 
-**Context window budget:** All configurations fit within Claude's context window. Extended financial skill (~1,000 lines) + core (347) + glossary (~600) = ~12,000 tokens. Cross-domain queries requiring 2 skills simultaneously (e.g., customer revenue + AR status) fit but are tight at ~14,000 tokens.
+5. **Forecasting with Insufficient Data (HIGH)** — Projecting "Apparel will grow 40%" from 6 months data, or seasonal patterns from only 24 months (contains COVID distortions). 2 years = barely enough for seasonal detection. **Prevention:** Show confidence context ("Based on N months"), use simple moving averages (not complex decomposition with thin data), present as range not single number, flag large-customer distortions (FLASH = 14% of revenue), never forecast per-division if <12 months division-tagged data. **Detection:** If forecast shows >20% growth or decline from trailing 12-month actual, flag as outside historical range. **Phase:** Forecasting phase, establish methodology constraints first.
 
-**Validation approach per domain:**
-- Financial extension: DSO calculation vs manual AR/revenue math, cash flow vs GL balance changes
-- Customers: Top 10 customers cross-checked with sales skill output (revenue totals must match)
-- Inventory: Inventory valuation vs GL NodeID 10414 balance (should approximate)
-- Production: WIP count vs TransHeader WHERE StatusID=1 count, artwork status vs Control UI spot-checks
-- Glossary (reports): Manual routing test with 20 NL queries, 90% correct routing acceptance
+6. **Division Filtering on GL vs TransHeader Mismatch (HIGH)** — "Apparel revenue (TransHeader)" = $200K but "Apparel revenue (GL)" = $180K. GL entries may have different DivisionID than parent TransHeader due to timing, manual corrections, or CCON-5479 bug. **Prevention:** Establish single authoritative source per metric (revenue = TransHeader, P&L = GL), document expected discrepancy, set tolerance threshold (<2%), add reconciliation query for DivisionID mismatches. **Phase:** Division framework, financial integration.
 
-### Critical Pitfalls (from PITFALLS.md)
-
-Pitfalls research identifies 11 critical, 7 moderate, 5 minor, and 3 integration-specific pitfalls. The critical pitfalls are calibrated against v1.0's TransDetailParam IsActive bug ($1.3M revenue discrepancy) as the severity reference point.
-
-**Top 5 critical pitfalls:**
-
-1. **GL Sign Convention Inversion (Financial)** — Revenue queries return negative numbers because GL stores revenue as negative (credits). Prevention: Hardcode `SUM(-Amount)` for GLClassificationType IN (4000, 4001). Validation: GL revenue must match known $3,053,541.85 benchmark. Severity: HIGH — wrong sign on $3M revenue is immediately visible but subtle COGS inversion would be harder to detect.
-
-2. **Inventory Quantity Field Confusion (Inventory)** — Skill reports QuantityOnHand instead of QuantityAvailable, overstating what can be allocated to new orders. The chain is: QuantityOnHand - QuantityReserved = QuantityAvailable. Prevention: Document NL mapping ("available" → QuantityAvailable, "on hand" → QuantityOnHand). Validation: Compare with Inventory Listing.rpt. Severity: HIGH — committing reserved inventory delays in-progress production.
-
-3. **TimeCard ClassTypeID Double-Counting (Production)** — Time queries sum both parent (20050) and station detail (20051) records, roughly doubling hours. Prevention: "For total hours, use ClassTypeID = 20050. For time-by-station, use 20051. Never mix." Severity: CRITICAL — 2x labor hours means 2x labor cost, production domain's equivalent of the $1.3M TransDetailParam bug.
-
-4. **DueDate Semantic Overloading (Financial AR/AP)** — AR aging uses TransHeader.DueDate (production/shipping deadline) instead of SaleDate (invoice date), producing completely wrong aging buckets. Prevention: AR aging MUST use SaleDate. AP aging MUST use DueDate (correct for bills). Severity: CRITICAL — wrong AR aging produces incorrect collections prioritization, exact analog of v1.0's SaleDate/OrderCreatedDate bug.
-
-5. **GL View vs Ledger Table Confusion (Financial)** — Queries use Ledger table directly instead of GL view, including ~307K off-balance-sheet entries that distort financial totals. GL is a VIEW: `SELECT * FROM Ledger WHERE OffBalanceSheet = 0`. Prevention: "Use GL view for financial queries. Use Ledger only for production costs including non-accrual materials." Severity: HIGH — ~11% data distortion, off-balance-sheet entries inflate COGS.
-
-**Integration pitfalls:**
-
-- **Contradicting Core Skill Business Rules** — New skills hardcode TransactionType or price field rules that contradict control-erp-core. Prevention: All new skills MUST declare dependency on core and defer for TransactionType, StatusID, date fields, standard filters. Severity: CRITICAL — this is how v1.0 started with wrong mappings.
-
-- **Natural Language Routing Ambiguity** — "Top customers" could route to sales (revenue), financial (AR), or customers (CLV). Prevention: Define clear domain boundaries, test with ambiguous prompts. Severity: MEDIUM.
-
-- **Duplicated Query Patterns** — Financial and Customer skills both implement "revenue by customer" with different logic. Prevention: Designate one skill as authoritative per query type, cross-reference core's validated patterns. Severity: MEDIUM.
-
-**Phase-specific warnings table:**
-
-| Phase | Likely Pitfall | Mitigation | Severity |
-|-------|---------------|------------|----------|
-| Financial extension | C1 (GL sign inversion), C3 (DueDate AR aging) | Hardcode SUM(-Amount), use SaleDate not DueDate | CRITICAL |
-| Customer build | C9 (CompanyName not AccountName), C10 (IsClient flags) | Use CompanyName, default IsClient=1 IsActive=1 | HIGH |
-| Inventory build | C4 (Quantity field), C5 (Inventory vs Part table) | Use QuantityAvailable, query Inventory not Part | HIGH |
-| Production build | C6 (TimeCard ClassTypeID), C8 (Journal multi-purpose) | Filter ClassTypeID 20050 vs 20051, JournalActivityType=45 | CRITICAL |
+**Other notable pitfalls:**
+- Seasonal pattern overfitting with 24 data points (require 36+ months before claiming patterns)
+- Division filter not applied consistently across cross-skill queries (dashboard shows Apparel revenue + total AR)
+- React artifact imports unsupported libraries (only Recharts + Tailwind + Shadcn UI)
+- Moving average window functions misconfigured for projection (need to generate future period rows via CTE)
+- Payroll GL queries pick up non-payroll OpEx (need to map specific payroll GL NodeIDs)
+- Account.DivisionID != TransHeader.DivisionID (customer default vs order-level division)
 
 ## Implications for Roadmap
 
-Based on research consensus and conflict resolution, recommended phase structure for v1.1:
+Based on research, the **critical path is division filtering -> analytics -> dashboard**, with integration/validation at each step. The brownfield context (building on 49 shipped requirements, 73 validated queries) allows parallelization within phases but NOT across the dependency chain.
 
-### Phase 1: Financial Depth Extension
-**Rationale:** Lowest risk — extends already-validated skill with analytical queries building on proven foundations (GL, AR/AP, P&L templates). No new skill file to create. Validation straightforward (compare against FLS Income Statement, Balance Sheet, AR/AP reports). This resolves the Stack vs Architecture conflict by choosing to EXTEND with a safeguard (extract to references/ if >1,200 lines).
+### Phase 14: Division Filtering Framework
 
-**Delivers:**
-- Cash flow analysis (period-over-period balance sheet changes)
-- AR velocity and DSO calculation
-- P&L trending (month-over-month, YoY comparison)
-- Margin analysis by period
-- GL integrity checks (import 7+ wiki SQL patterns)
-- Bank reconciliation status
-
-**Features from FEATURES.md:** 5 new differentiators (cash flow summary, historical AR, GL integrity, margin trend, AR velocity)
-
-**Avoids pitfalls:** C1 (GL sign convention — already documented in existing skill), C2 (GL view vs Ledger — already established), C3 (DueDate AR aging — existing skill uses SaleDate correctly, propagate pattern)
-
-**Stack elements:** Wiki extracts (orders_accounting_knowledge.md, sql_queries_reference.md), existing financial skill as foundation
-
-**Validation:** Extended financial skill must match FLS Income Statement net income within 1%, AR aging vs A_R Detail.rpt, DSO calculation vs manual math (AR ~$81K, 2025 revenue $3.05M → DSO ~9.7 days)
-
-**Research flag:** Standard patterns (P&L, AR, AP already validated). No phase-level research needed, but specific queries (cash flow reconstruction, DSO formula) need validation against Control reports.
-
-### Phase 2: Customer Intelligence
-**Rationale:** No dependency on other new skills. High user value (customer lookup is daily use). Well-defined validation (cross-reference sales skill top customers). Account table is fully documented, CRM patterns documented in wiki. Builds confidence before tackling genuinely new domains.
+**Rationale:** Division filtering is cross-cutting — touches sales, financial, customers, inventory, production. Building analytics or dashboard without division support means rebuilding later. It is also the SIMPLEST feature (adds WHERE clause to existing queries) and has clear validation (sum of divisions = total). This unblocks division-filtered forecasts and division-specific dashboards.
 
 **Delivers:**
-- Customer lookup by name/number/contact
-- Customer profile (360-view with contacts, addresses, orders, revenue, AR)
-- Customer lifetime value (CLV)
-- Customer segmentation (by stage, industry, origin, revenue tier)
-- Churn detection (dormant customer identification)
-- RFM analysis (Recency, Frequency, Monetary value)
+- Division Filtering section in control-erp-core (~50-80 lines)
+- DivisionID mapping table (which field per table: TransHeader.DivisionID, GL.DivisionID, ProductionDivisionID, etc.)
+- COALESCE(DivisionID, 10) pattern documented as mandatory rule
+- Division-filtered revenue query (extends sales Template 1)
+- Division-filtered AR query (extends financial AR Aging)
+- Division-filtered P&L query (extends financial P&L)
+- Division comparison view (side-by-side Banner vs Apparel)
+- NL routing updates in glossary ("Apparel" = DivisionID X, "Banner" = DivisionID Y, "by division" modifier)
 
-**Features from FEATURES.md:** 8 table stakes + 8 differentiators (CLV, churn, concentration analysis, estimate conversion, segmentation)
+**Addresses features:**
+- DIVISION-01 (filter by division)
+- DIVISION-02 (division comparison)
+- DIVISION-03 (division-aware NL routing)
 
-**Avoids pitfalls:** C9 (Account.CompanyName not AccountName — documented in MEMORY.md), C10 (IsClient/IsProspect/IsActive triple-flag filtering), M3 (TransactionType polymorphism — apply core filters), I1 (contradicting core — explicit dependency declaration)
+**Avoids pitfalls:**
+- C1 (NULL DivisionID exclusion) — COALESCE pattern mandatory
+- C2 (wrong DivisionID field) — mapping table per query type
+- C3 (DivisionID vs ProcessedDivisionID) — use DivisionID for financial
+- I2 (regression of validated queries) — re-run 21-test suite after changes
 
-**Stack elements:** Account schema (54,719 rows), AccountContact (64,851), wiki extract (crm_payroll_system_knowledge.md for Company Stages, marketing lists)
+**Prerequisites (discovery queries):**
+1. Query DivisionData for actual IDs: `SELECT ID, DivisionName, IsActive FROM DivisionData WHERE ID > 0`
+2. Validate DivisionID coverage: `SELECT COUNT(*) FROM TransHeader WHERE DivisionID IS NULL AND TransactionType=1`
+3. Validate GL DivisionID coverage: `SELECT COUNT(*) FROM GL WHERE DivisionID IS NULL`
+4. Check DivisionID vs ProcessedDivisionID agreement: `SELECT COUNT(*) FROM Ledger WHERE DivisionID != ProcessedDivisionID AND DivisionID IS NOT NULL`
 
-**Depends on:** control-erp-core (TransactionType = 1 for order history, SubTotalPrice for CLV, Account.CompanyName gotcha)
+**Validation:**
+- Sum of division-filtered revenues equals total revenue (no orphans)
+- Apparel Division AR matches Gretel's expectations (cross-check with Control report)
+- GL entries by division sum to total (no division leakage)
 
-**Validation:** Top 10 customers by revenue cross-checked with sales skill Template 6 (revenue totals must match within 1%), spot-check 3-5 customer profiles against Control UI
+**Research flag:** STANDARD PATTERN. Division filtering is well-documented in Cyrious wiki (40+ SQL scripts). No deep research needed during phase planning — just apply the COALESCE pattern consistently.
 
-**Research flag:** Standard patterns (customer lookup, order history are straightforward joins). Company Stage query (Account.StageID → Element WHERE ClassTypeID IN 5511/5512) needs live validation against FLS data.
+---
 
-### Phase 3: Inventory Management
-**Rationale:** New domain (13 tables, 1.2M rows) with no overlap with existing skills. Cross-references financial skill for GL cost accounts (already extended in Phase 1). Wiki documentation is comprehensive (production_inventory_knowledge.md Section 4 provides complete inventory formulas). Benefits from financial extension complete (can validate inventory value against GL NodeID 10414).
+### Phase 15: Analytics Skill — Forecasting & Trends
 
-**Delivers:**
-- Current stock levels (QuantityAvailable, QuantityOnHand, QuantityReserved)
-- Inventory listing by part, warehouse, division
-- Inventory valuation (SUM QuantityBilled * AverageCost)
-- Low stock / reorder alerts
-- Part lookup and cost information
-- Inventory movement history (InventoryLog)
-- Part consumption by order
-- Open purchase orders (Type 7 TransHeader)
-
-**Features from FEATURES.md:** 7 table stakes + 6 differentiators (turnover, slow-moving detection, GL reconciliation, consumption trend)
-
-**Avoids pitfalls:** C4 (Quantity field confusion — QuantityAvailable vs QuantityOnHand), C5 (Inventory vs Part table quantities — always query Inventory with ClassTypeID 12200), M4 (PartType classification — filter to Material parts for physical inventory)
-
-**Stack elements:** Inventory schema (27,268 rows), Part (7,684), InventoryLog (906,714), wiki knowledge (inventory formulas, tracking modes), TransPart (2.26M rows — performance-critical)
-
-**Depends on:** control-erp-core (partial — GoodsItemClassTypeID 49=Product, 30=Part), control-erp-financial (cross-reference for GL cost account NodeID 10414)
-
-**Validation:** Inventory valuation vs GL NodeID 10414 balance (should approximate), inventory listing vs Inventory Listing.rpt, spot-check 5 specific parts (query stock vs Control UI)
-
-**Research flag:** FLS-specific warehouse configuration needs live database discovery. Query: `SELECT ID, WarehouseName, WarehouseType FROM Warehouse WHERE IsActive = 1`. How many warehouses? Which types (Standard, Kanban, Stockroom, Group)? Which parts use which warehouses? This configuration determines query patterns.
-
-### Phase 4: Production Workflow
-**Rationale:** Largest new domain (artwork + stations + time tracking + shipping). Benefits from inventory skill existing (part usage card context). Most complex due to FLS-specific station configuration and artwork status usage patterns. Needs live station/artwork discovery queries.
+**Rationale:** Analytics produces forecast data that dashboard consumes (forecast overlay on revenue charts). Building analytics before dashboard allows testing forecasts independently. Division filtering from Phase 14 enables division-level forecasts. Forecasting builds on existing sales/financial data (no new DB discovery).
 
 **Delivers:**
-- Artwork approval pipeline (ArtworkGroup status tracking)
-- Artwork bottleneck detection (stuck in Pending Approval)
-- Station workload (orders per station, WIP by station)
-- Production schedule (orders by due date, station capacity)
-- Employee time tracking (hours on jobs/stations)
-- Time clock status (who's clocked in)
-- Shipment tracking (Shipments table, FedEx/UPS logs)
-- Job costing (estimated vs actual cost per order)
+- control-erp-analytics skill (~400-600 lines)
+- Simple moving average (3-month, 6-month) via window functions
+- YoY growth rate projection (average historical growth applied to next year)
+- Seasonal decomposition (monthly % of annual, applied to target)
+- Confidence range calculation (STDEV-based high/low/expected)
+- Product-line trend detection (growth/decline ranking by category)
+- Customer trend analysis (new customers, declining customers)
+- Rolling 12-month trend (smoothed revenue trajectory)
+- Outlier flagging (>2 STDEV from 12-month avg)
+- NL routing updates ("forecast", "predict", "trend", "growth")
 
-**Features from FEATURES.md:** 7 table stakes + 7 differentiators (artwork turnaround time, station utilization, cost variance, bottleneck detection)
+**Uses (from STACK.md):**
+- T-SQL window functions (LAG, LEAD, AVG OVER)
+- T-SQL linear regression CTEs (least-squares slope/intercept)
+- T-SQL seasonal decomposition (ratio-to-moving-average)
 
-**Avoids pitfalls:** C6 (TimeCard ClassTypeID double-counting — CRITICAL), C7 (Geography columns crash queries — never SELECT *), C8 (Journal multi-purpose table — filter JournalActivityType=45 for stations), C11 (Artwork status integer magic numbers — use artwork-specific StatusIDs), M7 (PartUsageCard vs TransPart — actual vs estimated)
+**Implements (from ARCHITECTURE.md):**
+- Analytics skill component (builds on sales/financial/customers data)
+- Forecast data flow: historical actuals -> trend computation -> projection + confidence
+- Trend detection: YoY comparison, MoM comparison, product/customer growth ranking
 
-**Stack elements:** ArtworkGroup schema (84,770 rows), Station (98), TimeCard (159,448), Journal (5.18M rows — must filter), Shipments (70,584), wiki knowledge (artwork workflow state machine, station hierarchy, TimeCard ClassTypeID patterns)
+**Addresses features:**
+- FORECAST-01 through FORECAST-05 (table stakes forecasting)
+- TREND-01 through TREND-05 (table stakes trend detection)
+- FORECAST-06 through FORECAST-09 (differentiator forecasting)
+- TREND-06 through TREND-11 (differentiator trends)
 
-**Depends on:** control-erp-core (StatusID 1/2 for WIP, TransactionType = 1), control-erp-inventory (soft — part usage cards reference Part table)
+**Avoids pitfalls:**
+- C4 (insufficient data) — use moving averages only, show confidence context, flag thin data
+- M1 (seasonal overfitting) — require 36+ months before claiming patterns
+- I1 (parallel revenue calculation) — use core revenue formula for actuals portion
+- M4 (window function projection gap) — generate future period rows via CTE
 
-**Validation:** WIP count vs TransHeader WHERE StatusID=1 count (exact match), WIP value vs WIP Summary report (within 1%), artwork status spot-checks (3-5 active orders vs Control UI), Shipped By Date report cross-check
+**Prerequisites:**
+1. Validate monthly revenue data quality: `SELECT MIN(SaleDate), MAX(SaleDate) FROM TransHeader WHERE TransactionType=1`
+2. Check Apparel Division history: `SELECT YEAR(SaleDate), MONTH(SaleDate), COUNT(*), SUM(SubTotalPrice) FROM TransHeader WHERE COALESCE(DivisionID,10) != 10 GROUP BY YEAR(SaleDate), MONTH(SaleDate)`
+3. Identify large-customer distortions (FLASH = 14% of revenue, flag if >20% in any month)
 
-**Research flag:** HIGH — FLS-specific station configuration and artwork status usage needs live discovery. Queries needed:
-- `SELECT ID, StationName, ParentID, DepartmentID, ShowOnTimeClock FROM Station WHERE IsActive = 1` (98 stations — what's the hierarchy?)
-- `SELECT StatusID, COUNT(*) FROM ArtworkGroup WHERE IsActive = 1 GROUP BY StatusID` (which statuses are actively used?)
-- `SELECT TOP 100 * FROM TimeCard WHERE ClassTypeID = 20050 ORDER BY ID DESC` (validate time clock pattern)
+**Validation:**
+- Forecast for known historical period matches actuals within 15% (methodology test)
+- "Actuals" portion of forecast matches sales Template 2 results exactly (consistency test)
+- Division-filtered forecasts sum to total forecast (division math check)
 
-### Phase 5: Glossary Integration (Reports Catalog + Routing Update)
-**Rationale:** MUST come last because it routes to ALL other skills. Requires all domain skills to exist before mapping routes. Resolves Stack vs Architecture conflict on reports by extending glossary (Architecture's recommendation) rather than creating standalone skill.
+**Research flag:** MODERATE RESEARCH NEEDED. SQL forecasting patterns are well-documented, but FLS-specific calibration required: seasonal pattern validation (are Aug-Sep peaks consistent?), large-customer impact (FLASH order timing), Apparel Division data sufficiency. Plan for 1-2 discovery queries during phase planning to validate assumptions.
+
+---
+
+### Phase 16: Dashboard Skill — Text & Visual
+
+**Rationale:** Dashboard composes all features (sales, financial, customers, inventory, production, analytics). Cannot be built until component features are stable. Division filtering (Phase 14) enables division-specific dashboards. Analytics (Phase 15) provides forecast overlay data for charts. Dashboard is presentation layer — should be built last.
 
 **Delivers:**
-- Crystal Reports catalog (36 reports in 6 categories: Financial, WIP, Sales, Estimates, Inventory, Other)
-- Intent-to-report mapping ("AR aging" → A_R Detail.rpt)
-- Report vs custom query decision logic
-- Report parameter guidance
-- Updated NL routing for all new domain skills (inventory terms, production terms, customer terms, financial depth terms)
+- control-erp-dashboard skill (~300-500 lines)
+- Text dashboard template (morning report structure: revenue, AR, WIP, alerts)
+- React artifact component patterns (Recharts configs: LineChart, BarChart, PieChart, AreaChart)
+- Tailwind layout templates (grid, cards, tables)
+- Alert threshold definitions (what is "concerning" AR, "stuck" artwork, "overdue" orders)
+- KPI definitions (which metric, which query, how to calculate)
+- Multi-query orchestration (which queries to run for each dashboard type)
+- Division-filtered dashboard variant (Gretel's Apparel dashboard)
+- NL routing updates ("morning report", "dashboard", "show me charts")
 
-**Features from FEATURES.md:** 5 table stakes (catalog lookup, recommendation, parameters, description, SQL equivalents where possible) + 4 differentiators (output replication, cross-report intelligence, gap identification)
+**Uses (from STACK.md):**
+- React Artifacts (Recharts + Tailwind CSS + Shadcn UI + Lucide icons)
+- Data embedding pattern (SQL results -> JavaScript constants -> React props)
 
-**Avoids pitfalls:** M6 (Report metadata limitations — acknowledge inferred metadata, focus on routing guidance), I2 (NL routing ambiguity — define clear domain boundaries)
+**Implements (from ARCHITECTURE.md):**
+- Dashboard skill component (orchestrates all domain skills)
+- Two-tier output: text (always available) + React visual (Claude.ai/desktop)
+- Data granularity: ~100-150 rows embedded (monthly aggregates, top-N lists)
 
-**Stack elements:** report_summary.md (36 reports cataloged), report_join_patterns.md (SQL equivalents), Report table (211 rows), ReportTemplate (168 rows)
+**Addresses features:**
+- DASH-01 (text morning report)
+- DASH-02 through DASH-05 (table stakes dashboard sections)
+- DASH-06 through DASH-10 (differentiator dashboard features)
+- DASH-11 through DASH-14 (React visual dashboards)
 
-**Extends:** control-erp-glossary (add Crystal Reports Catalog section + routing entries for inventory/production/customer/financial-depth)
+**Avoids pitfalls:**
+- C5 (inconsistent dashboard metrics) — use EXACT same SQL templates as domain skills
+- M3 (unsupported React libraries) — only Recharts + Tailwind + Shadcn + Lucide
+- M7 (divergent time ranges) — single date computation shared by text + visual
+- I3 (NL routing conflicts) — explicit dashboard triggers, no overlap with existing
 
-**Validation:** Manual routing test with 20 NL queries covering all domains, 18/20 correct routing = 90% acceptance
+**Prerequisites:**
+1. Establish alert thresholds via historical baselines (what % of AR is typically >90 days? what is normal artwork dwell time?)
+2. Test each chart type individually (line, bar, pie, table) before combining
+3. Validate React artifact sandbox constraints (no external API calls, libraries pre-installed)
 
-**Research flag:** Standard patterns (static catalog, straightforward routing table). No research needed.
+**Validation:**
+- Dashboard metrics match individual skill results to the penny (consistency test)
+- Text dashboard + React dashboard show same numbers (no divergence)
+- Division-filtered dashboard shows only division-scoped metrics (no company-wide leakage)
+- All alert thresholds trigger on known historical scenarios
+
+**Research flag:** MODERATE RESEARCH NEEDED. React artifact patterns are well-documented, but dashboard design requires business input: which KPIs matter most? what alert thresholds are actionable? how much detail in morning report? Plan for 1-2 user interviews (Cain, Gretel, Taylor) during phase planning to calibrate dashboard content.
+
+---
+
+### Phase 17: Payroll Expense (GL-based) — Lightweight Add-On
+
+**Rationale:** Payroll expense is intentionally shallow (GL aggregates only, no deep TimeCard/Payroll tables per PROJECT.md). Small scope, well-defined GL queries. Independent of analytics/dashboard — can be built in parallel with Phase 16 or as a quick follow-up. Includes division filtering (payroll by division) which depends on Phase 14.
+
+**Delivers:**
+- Payroll expense queries in financial skill (~50-80 lines added)
+- Total payroll by pay period (via Ledger.PayrollID IS NOT NULL)
+- Payroll as P&L line item (break out from OpEx 5002)
+- Monthly payroll trend (6-12 month history)
+- Payroll as % of revenue (profitability metric)
+- Payroll by division (Apparel vs Banner payroll costs)
+- Optional: Payroll expense by category (wages, taxes, benefits) if GL accounts are clearly named
+
+**Addresses features:**
+- PAYROLL-01 through PAYROLL-04 (table stakes payroll)
+- PAYROLL-05 through PAYROLL-07 (differentiator payroll)
+
+**Avoids pitfalls:**
+- M5 (non-payroll OpEx in payroll query) — map specific payroll GL NodeIDs
+
+**Prerequisites:**
+1. Identify payroll GL accounts: `SELECT ID, AccountName FROM GLAccount WHERE GLClassificationType=5002 AND (AccountName LIKE '%payroll%' OR AccountName LIKE '%salary%' OR AccountName LIKE '%wage%' OR AccountName LIKE '%benefit%')`
+2. Verify Ledger.PayrollID coverage (how many payroll entries have PayrollID vs manual adjustments?)
+
+**Validation:**
+- Cross-validate with Carrie Goetelman (payroll processor) for approximate totals
+- Payroll expense is fraction of revenue (not close to total OpEx)
+- Division-level payroll sums to total payroll
+
+**Research flag:** STANDARD PATTERN. GL-based expense queries already proven in financial skill. Just identify payroll-specific GL accounts and apply existing P&L patterns.
+
+---
+
+### Phase 18: Integration, Glossary Sync & Milestone Validation
+
+**Rationale:** After all features built, test the full chain: NL -> glossary -> skill -> query -> format. Validate cross-feature combinations (division-filtered dashboard with forecast overlay). Final glossary sync ensures all new NL routes wired correctly. Milestone audit confirms 99.98% accuracy maintained.
+
+**Delivers:**
+- End-to-end testing across all v1.2 features
+- Glossary final sync (~30-50 new NL routes for analytics, dashboard, division)
+- Division + analytics + dashboard combined tests (Gretel's morning report)
+- Regression testing: 21-test v1.1 validation suite + 25 routing test queries
+- Milestone audit document (v1.2-MILESTONE-AUDIT.md)
+- Updated skill count, query count, line count summaries
+
+**Validation scenarios:**
+- "Apparel Division forecast for Q2" — tests division + analytics integration
+- "Morning report for Banner Division" — tests division + dashboard integration
+- "Show me a chart of revenue by division with forecast overlay" — tests all three features
+- Re-run all 21 v1.1 validation tests (ensure no regressions from division filtering)
+- Run 25 glossary routing tests (ensure no routing conflicts from new entries)
+
+**Success criteria:**
+- All division-filtered queries maintain 99.98% accuracy (sum of divisions = total)
+- Dashboard metrics match individual skill results (no inconsistencies)
+- Forecasts labeled with confidence context (no false precision)
+- Glossary routes all new NL phrases correctly (no ambiguity)
+
+---
 
 ### Phase Ordering Rationale
 
-**Why this order:**
+**Dependency-driven sequence:**
+- Division filtering (14) MUST precede analytics (15) and dashboard (16) because both consume division filtering
+- Analytics (15) SHOULD precede dashboard (16) because dashboard includes forecast overlay data
+- Payroll (17) is independent and can run parallel with dashboard (16) or after
+- Integration (18) requires all features complete
 
-1. **Financial first** — Extends proven foundation, lowest risk, establishes analytical query patterns (cash flow, margin trend) that inform later skills
-2. **Customer second** — No dependencies on new skills, high user value, builds confidence, validates Account-centric query patterns before inventory/production
-3. **Inventory third** — Cross-references financial (GL cost accounts), new domain but wiki-documented formulas reduce risk
-4. **Production fourth** — Largest domain, highest complexity, benefits from customer/inventory patterns established, needs most live discovery
-5. **Glossary last** — Routes to all skills, must exist after skills to route to
+**Why NOT parallelize 14-15-16:**
+- If analytics built before division filtering, all forecast queries need division retrofit later
+- If dashboard built before analytics, no forecast data to embed in charts (design incomplete)
+- If division filtering added after dashboard, dashboard queries need division clause injection (rework)
 
-**Dependency flow:**
-```
-Financial extension (no dependencies)
-    ↓ (validates analytical patterns)
-Customer build (no dependencies, uses core)
-    ↓ (validates Account-centric patterns)
-Inventory build (cross-refs financial GL accounts)
-    ↓ (establishes part/warehouse patterns)
-Production build (soft ref to inventory for part usage)
-    ↓ (all domain skills complete)
-Glossary integration (routes to ALL above)
-```
+**Risk mitigation via ordering:**
+- Division filtering first = smallest scope, clearest validation, unblocks everything
+- Analytics second = medium scope, builds on validated data, produces inputs for dashboard
+- Dashboard last = largest composition scope, needs stable inputs, presentation layer isolated from data correctness
 
-**Parallelization opportunity:** Phases 1 (Financial) and 2 (Customer) have zero dependencies on each other. Could be built simultaneously by separate developers. Phases 3 (Inventory) and 4 (Production) have only a soft dependency (production references part usage cards) and could overlap if production's part-related queries are built after inventory is complete.
-
-**How this avoids pitfalls:**
-
-- Build order ensures core skill dependency patterns (TransactionType, StatusID, date filtering) are validated in simpler domains (customer) before complex domains (production)
-- Financial first establishes GL query patterns, so inventory can validate against GL cost accounts from day 1
-- Customer before production establishes Account-centric lookup patterns used in production (who's the customer for this WIP order?)
-- Glossary last ensures all routing targets exist before mapping NL intents
+**Brownfield advantage:**
+- 73 existing queries provide templates (no greenfield data exploration)
+- 8 existing skills provide integration points (no monolithic rebuild)
+- 99.98% accuracy baseline provides regression tests (immediate validation)
 
 ### Research Flags
 
 **Phases needing deeper research during planning:**
 
-- **Phase 3 (Inventory):** FLS-specific warehouse configuration discovery required. How many warehouses? Which warehouse types? Which parts track inventory in which warehouses? Discovery query: `SELECT * FROM Warehouse WHERE IsActive = 1`. Impact: Determines whether inventory queries filter by warehouse or aggregate across all.
+- **Phase 15 (Analytics):** FLS-specific seasonal pattern validation (are Aug-Sep peaks statistically significant with only 2 years?), large-customer impact quantification (how much does FLASH's order timing distort trends?), Apparel Division data sufficiency check (enough history for per-division forecasts?). Discovery queries + data analysis during phase planning. Estimated 1-2 hours research.
 
-- **Phase 4 (Production):** Station hierarchy and artwork status usage discovery required. 98 stations exist — what's the department/workstation structure? Which statuses in `_ArtworkStatus` are actively used at FLS? Discovery queries: Station table hierarchy analysis, ArtworkGroup StatusID distribution. Impact: Determines station aggregation logic and artwork pipeline query patterns.
+- **Phase 16 (Dashboard):** Business input required for KPI selection (which metrics matter most to Cain/Gretel/Taylor?), alert threshold calibration (what AR aging triggers concern?), dashboard layout preferences (which sections most important?). User interviews during phase planning. Estimated 1-2 hours.
 
-**Phases with standard patterns (skip research-phase):**
+**Phases with standard patterns (skip deep research):**
 
-- **Phase 1 (Financial):** P&L, AR, AP, cash flow all use validated GL/Ledger patterns from v1.0. Wiki provides exact SQL for GL integrity checks and historical AR. Straightforward extension.
+- **Phase 14 (Division Filtering):** Well-documented in Cyrious wiki (40+ SQL scripts with COALESCE pattern). DivisionID mapping is schema lookup. Just apply pattern consistently. Discovery queries only (10-15 minutes).
 
-- **Phase 2 (Customer):** Account table schema fully documented, revenue queries validated in sales skill, CRM patterns documented in wiki. Standard JOIN patterns.
+- **Phase 17 (Payroll GL):** Extends existing financial skill P&L patterns. Just identify payroll GL accounts via discovery query. Standard GL aggregation. Discovery query only (10 minutes).
 
-- **Phase 5 (Glossary):** Static catalog from report_summary.md, straightforward routing table extension. No new query patterns.
+- **Phase 18 (Integration):** No new research — just testing and validation.
+
+**Research effort estimate:** ~3-4 hours total across all phases (vs. 8-12 hours for greenfield v1.0). Brownfield advantage: known data models, proven patterns, clear validation baselines.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All recommendations based on validated v1.0 architecture. No new packages. Existing MCP/SQL Server/YAML pattern proven. Wiki extracts comprehensive. |
-| Features | HIGH | Table stakes identified from domain expertise + Control documentation. Differentiators validated against advanced_analytics.md templates. Anti-features clearly scoped (no write ops, no payroll). |
-| Architecture | HIGH | Based on direct analysis of existing v1.0 skill files (347-857 lines each), 187 table schemas, wiki extracts, Crystal Reports catalog. Context window budgeting verified. Dependency analysis clear. |
-| Pitfalls | HIGH | All critical pitfalls calibrated against v1.0 validation results ($1.3M TransDetailParam bug as reference). GL sign convention, TimeCard double-counting, DueDate semantic overload all have validated prevention strategies. |
+| Stack | HIGH | All recommendations are SQL-native or pre-installed React libraries. No new dependencies. T-SQL window functions proven in production skill. Division filtering documented in 40+ wiki scripts. React artifacts well-understood (2+ years of community usage). |
+| Features | HIGH | All four researchers converged on same table stakes vs differentiators. FLS requirements clear (2026 sales plan exists, division structure known, payroll via GL documented in PROJECT.md). 56 features + 24 anti-features identified with rationale. |
+| Architecture | HIGH | Two-skill expansion (analytics, dashboard) with division framework in core matches existing skill topology. Build order consensus across all researchers. Component boundaries clear. Data flow validated against existing query patterns. |
+| Pitfalls | HIGH | 6 critical pitfalls identified with evidence (Cyrious wiki, schema FKs, v1.0 lessons). COALESCE pattern critical, TransHeader has 3 DivisionID fields (verified in schema), dashboard consistency is v1.2's TransDetailParam equivalent. All mitigations documented. |
 
-**Overall confidence:** HIGH
+**Overall confidence: HIGH**
 
-Architecture and Stack research are based on existing, validated v1.0 artifacts. Features research draws from comprehensive wiki extracts (1,769 pages, 6 domain-specific extracts). Pitfalls research identifies exact analogs of v1.0 bugs in new domains (TimeCard ClassTypeID = TransDetailParam IsActive pattern). The only MEDIUM confidence area resolved: FLS-specific configurations (warehouses, stations) require live database discovery in Phases 3-4, but discovery query patterns are straightforward.
+This research builds on 49 shipped requirements across 8 validated skills. The unknowns are calibration (seasonal patterns, alert thresholds) not data model discovery. The critical pitfalls are known (NULL DivisionID, wrong DivisionID field) with clear mitigations (COALESCE, mapping table). The stack requires no new installations. The architecture extends proven patterns (skill per domain, core for cross-cutting, glossary for routing).
 
 ### Gaps to Address
 
-**Architectural decision resolved:** Stack vs Architecture disagreement on financial-deep (separate skill vs extend existing). **Resolution:** EXTEND control-erp-financial per Architecture recommendation, with safeguard: if extended skill exceeds 1,200 lines, extract low-frequency sections to references/advanced-gl.md (v1.1's first use of reference pattern). This maintains v1.0's single-file pattern while establishing escape valve for future growth.
+**Data gaps (resolve via discovery queries in Phase 14):**
 
-**Reports catalog location resolved:** Stack vs Architecture disagreement on standalone skill vs glossary section. **Resolution:** Extend control-erp-glossary per Architecture recommendation. 36-report catalog (~100-150 lines) is too thin for standalone skill. Glossary is already a routing skill, reports catalog is fundamentally routing ("which report answers this question?"). If catalog grows beyond 100 reports or parameter docs become extensive, split later.
+- **Actual DivisionData IDs:** Schema shows ID=-1 (system), but Company and Apparel IDs unknown. Query: `SELECT ID, DivisionName, IsActive FROM DivisionData WHERE ID > 0`. Needed before any division-filtered query.
 
-**Remaining gaps (to be addressed during implementation):**
+- **DivisionID NULL coverage:** How many TransHeader/GL records have NULL DivisionID? Query: `SELECT COUNT(*) FROM TransHeader WHERE DivisionID IS NULL AND TransactionType=1`. Quantifies C1 pitfall severity.
 
-- **FLS warehouse configuration:** Number of warehouses, warehouse types in use, part-to-warehouse assignments. Discovery: `SELECT * FROM Warehouse WHERE IsActive = 1` + Inventory table analysis. Impact: Phase 3 inventory queries. Mitigation: Design queries to work with N warehouses (aggregate or filter), validate against live data.
+- **Payroll GL NodeIDs:** Which GL accounts are payroll? Query: `SELECT ID, AccountName FROM GLAccount WHERE GLClassificationType=5002 AND AccountName LIKE '%payroll%'`. Needed for payroll expense queries.
 
-- **FLS station hierarchy:** 98 stations — department/workstation structure specific to FLS. Discovery: `SELECT ID, StationName, ParentID, DepartmentID, ShowOnTimeClock FROM Station WHERE IsActive = 1`. Impact: Phase 4 production workload aggregation. Mitigation: Design generic department rollup pattern, populate FLS-specific hierarchy in references/station_reference.md after discovery.
+- **Apparel Division history depth:** Does Apparel have 12+ months of division-tagged data? Query: monthly revenue by division. Determines if per-division forecasting feasible.
 
-- **Artwork status usage:** Which StatusIDs in `_ArtworkStatus` lookup table are actively used? Discovery: `SELECT StatusID, COUNT(*) FROM ArtworkGroup WHERE IsActive = 1 GROUP BY StatusID`. Impact: Phase 4 artwork pipeline queries. Mitigation: Query StatusID distribution, map to status names via `_ArtworkStatus` lookup, document in references/artwork_workflow_reference.md.
+**Calibration gaps (resolve via user input in Phases 15-16):**
 
-- **TimeCard time clock pattern:** How is "currently clocked in" represented? Discovery: `SELECT TOP 100 * FROM TimeCard WHERE ClassTypeID = 20050 ORDER BY ID DESC` + `SELECT * FROM TimeClockStatus WHERE IsActive = 1`. Impact: Phase 4 time tracking queries. Mitigation: Wiki documents ClassTypeID 20050 = parent, 20051 = detail. Validate with live data, cross-check TimeClockStatus table.
+- **Seasonal pattern significance:** With only 24 months of data, are Aug-Sep peaks statistically robust or noise? Run seasonal decomposition, check STDEV. If weak, use simple YoY instead.
 
-- **Customer segmentation thresholds:** What constitutes "top customer," "at-risk customer," "dormant customer" for FLS? Discovery: Revenue distribution analysis, last-order-date distribution. Impact: Phase 2 customer intelligence segmentation. Mitigation: Use industry-standard thresholds (top 10% revenue, 180 days dormant), validate against FLS data, adjust if needed.
+- **Alert thresholds:** What AR aging triggers action at FLS? What artwork dwell time is "stuck"? Interview Cain/Gretel for business context.
 
-**How to handle during planning/execution:**
+- **Dashboard KPI priorities:** Which metrics matter most? Morning report should highlight what Cain/Gretel/Taylor check first thing. User preferences drive dashboard design.
 
-All gaps are discoverable via SQL queries against live database. Each gap has a discovery query pattern documented above. Phases 3-4 require discovery queries BEFORE writing query templates. Design templates generically (work with any warehouse count, any station hierarchy), then populate FLS-specific details in skill documentation and reference files after discovery.
+**Technical gaps (validate during implementation):**
+
+- **React artifact rendering:** Test each chart type (line, bar, pie) individually before combining into dashboard. Confirm Recharts + Tailwind work as expected in Claude's artifact sandbox.
+
+- **Division filtering regression:** After adding division clauses, re-run 21-test validation suite. Ensure no regressions in unfiltered queries.
+
+None of these gaps block research synthesis or roadmap creation. All are addressable during phase planning/execution with 10 minutes - 2 hours of effort per gap.
 
 ## Sources
 
 ### Primary (HIGH confidence)
 
-**Existing validated v1.0 skills:**
-- `/Users/cain/projects/control-db-map/skills/control-erp-core/control-erp-core-SKILL.md` — 347 lines, validated business rules, TransactionType mappings, StatusID reference, standard filters, $3,053,541.85 revenue benchmark
-- `/Users/cain/projects/control-db-map/skills/control-erp-financial/control-erp-financial-SKILL.md` — 857 lines, validated GL/Ledger architecture, AR/AP snapshots, P&L templates, sign conventions, payment posting patterns
-- `/Users/cain/projects/control-db-map/skills/control-erp-sales/control-erp-sales-SKILL.md` — 370 lines, validated sales queries, Template 6 (top customers by revenue)
-- `/Users/cain/projects/control-db-map/skills/control-erp-glossary/control-erp-glossary-SKILL.md` — 491 lines, validated NL routing table, 20 product categories, 30+ terms
-
-**Database schema documentation:**
-- `/Users/cain/projects/control-db-map/output/schemas/` — 187 table schemas with row counts, column definitions, FK relationships from live database
-- `/Users/cain/projects/control-db-map/output/domains.md` — 16 functional domains, table groupings
-- `/Users/cain/projects/control-db-map/output/relationships.md` — Explicit and inferred FK relationships
-
-**Wiki knowledge extracts:**
-- `/Users/cain/projects/control-db-map/output/wiki/extracts/database_integration_knowledge.md` — Complete ClassTypeID mapping (350+ values), SQL Bridge, CHAPI, stored procs
-- `/Users/cain/projects/control-db-map/output/wiki/extracts/orders_accounting_knowledge.md` — GL lifecycle, payment posting, pricing mechanics, tax handling
-- `/Users/cain/projects/control-db-map/output/wiki/extracts/production_inventory_knowledge.md` — Artwork workflow, stations, inventory formulas, warehouses, shipping, parts
-- `/Users/cain/projects/control-db-map/output/wiki/extracts/crm_payroll_system_knowledge.md` — CRM patterns, Company Stages, marketing lists, contact activity, payroll tables
-- `/Users/cain/projects/control-db-map/output/wiki/extracts/sql_queries_reference.md` — 40+ utility/diagnostic SQL queries including GL integrity checks, AR validation, inventory valuation
-
-**Crystal Reports analysis:**
-- `/Users/cain/projects/control-db-map/output/report_summary.md` — 36 Crystal Reports cataloged with purpose, primary tables, categories
-- `/Users/cain/projects/control-db-map/output/report_join_patterns.md` — Inferred SQL patterns from financial, AR, AP, WIP, sales reports
-
-**Validation results:**
-- `/Users/cain/projects/control-db-map/validation/control-erp-validation-results.md` — v1.0 validation findings, 35/35 requirements passed, TransDetailParam IsActive bug documented
-- `/Users/cain/projects/control-db-map/documentation/control-erp-knowledge-log.md` — Known gotchas, field mappings, query patterns
-
-**Project documentation:**
-- `/Users/cain/projects/control-db-map/project-cornerstone-charter.md` — Project architecture, phase structure, v1.1 scope
-- `/Users/cain/projects/control-db-map/CLAUDE.md` — Project instructions, schema extraction patterns, business rules reference
-- `/Users/cain/projects/control-db-map/MEMORY.md` — Critical gotchas (CompanyName not AccountName, SubTotalPrice not TotalPrice, SaleDate not OrderCreatedDate, TransDetailParam IsActive filter rule, GL NodeID mappings)
+**Internal (verified against database schema and validated skills):**
+- `/Users/cain/projects/control-db-map/output/schemas/TransHeader.md` — DivisionID, ProductionDivisionID, ShipFromDivisionID FK relationships verified
+- `/Users/cain/projects/control-db-map/output/schemas/Ledger.md` — DivisionID, ProcessedDivisionID fields verified
+- `/Users/cain/projects/control-db-map/output/schemas/DivisionData.md` — 3 rows, nullable columns, IsActive flag
+- `/Users/cain/projects/control-db-map/output/schemas/Warehouse.md` — DivisionID NOT NULL (FK required)
+- `/Users/cain/projects/control-db-map/output/schemas/Account.md` — DivisionID FK to DivisionData
+- `/Users/cain/projects/control-db-map/output/wiki/extracts/sql_queries_reference.md` — 40+ wiki SQL scripts using COALESCE(DivisionID, 10)
+- `/Users/cain/projects/control-db-map/output/wiki/control/control_release_notes_6.1.2107.0701.md` — CCON-5479 ProcessedDivisionID bug documented
+- `/Users/cain/projects/control-db-map/skills/control-erp-core/control-erp-core-SKILL.md` — 99.98% validated revenue formula
+- `/Users/cain/projects/control-db-map/skills/control-erp-sales/control-erp-sales-SKILL.md` — 9 query templates (370 lines)
+- `/Users/cain/projects/control-db-map/skills/control-erp-financial/control-erp-financial-SKILL.md` — GL architecture, P&L, AR/AP (888 + 412 lines)
+- `/Users/cain/projects/control-db-map/output/FLS_Sales_Plan_2026.md` — 2026 sales plan with monthly/category targets
+- `/Users/cain/projects/control-db-map/.planning/PROJECT.md` — v1.2 requirements, payroll deferral decision
+- `/Users/cain/projects/control-db-map/.planning/milestones/v1.1-MILESTONE-AUDIT.md` — v1.1 delivered features, deferred items
 
 ### Secondary (MEDIUM confidence)
 
-- `/Users/cain/projects/control-db-map/output/skill/references/advanced_analytics.md` — Analytics query templates (CLV, RFM, churn, turnover, station utilization) — partially validated, templates exist but need FLS-specific validation
+**SQL forecasting patterns:**
+- [Statistics in SQL: Simple Linear Regressions - Simple Talk](https://www.red-gate.com/simple-talk/blogs/statistics-sql-simple-linear-regressions/) — T-SQL least-squares formula
+- [MSSQLTips: T-SQL Windowing Functions for Moving Averages](https://www.mssqltips.com/sqlservertip/8124/calculate-a-moving-average-with-t-sql-windowing-functions/) — Window function patterns
+- [LearnSQL: Year-over-Year Difference in SQL](https://learnsql.com/blog/year-over-year-difference-sql/) — YoY comparison patterns
+- [Silota: Ratio to Moving Average](http://www.silota.com/docs/recipes/sql-ratio-to-moving-average-seasonal-index.html) — Seasonal decomposition in SQL
+- [Weighted vs Simple Moving Average with SQL Server T-SQL](https://www.mssqltips.com/sqlservertip/6312/weighted-vs-simple-moving-average-with-sql-server-tsql-code/) — WMA implementation
 
-### Tertiary (LOW confidence)
+**React artifacts:**
+- [Reverse Engineering Claude Artifacts - Reid Barber](https://www.reidbarber.com/blog/reverse-engineering-claude-artifacts) — Artifact sandbox constraints
+- [Claude Help Center: Artifacts](https://support.claude.com/en/articles/9487310-what-are-artifacts-and-how-do-i-use-them) — Official docs
+- [Claude Artifacts: Game Changer Held Back by Limits - Medium](https://medium.com/@intranetfactory/claude-artifacts-a-game-changer-held-back-by-frustrating-limits-6adcacdd95a7) — Sandbox limitations (Jan 2025)
+- [Top 5 React Chart Libraries 2026 - Syncfusion](https://www.syncfusion.com/blogs/post/top-5-react-chart-libraries) — Recharts recommended
 
-- Crystal Report internal SQL and field mappings — report_summary.md explicitly notes metadata is INFERRED from filenames, not extracted (SAP Crystal Reports proprietary OLE format cannot be parsed without SDK). Report purposes and categories are reliable, but internal SQL patterns are best-effort inference.
+**Analytics methodology:**
+- [How to Conduct Time Series Forecasting in SQL with Moving Averages - Towards Data Science](https://towardsdatascience.com/how-to-conduct-time-series-forecasting-in-sql-with-moving-averages-fd5e6f2a456/) — SQL forecasting patterns
+- [Biggest Forecasting Mistakes 2026 - Mosaic](https://www.mosaicapp.com/post/the-biggest-forecasting-mistakes-leaders-still-make-in-2026) — Methodology pitfalls
+- [Executive Dashboards: Examples & Best Practices - Improvado](https://improvado.io/blog/executive-dashboards) — Dashboard KPI selection
+
+### Tertiary (community, needs validation)
+
+- [Manufacturing KPI Dashboard 2026 Guide - Method](https://www.method.me/blog/manufacturing-kpi-dashboard/) — Manufacturing-specific KPIs (FLS is manufacturing, but custom/small-batch)
+- [SQL Growth Analysis - SQLGuroo](https://sqlguroo.com/blog/sql-growth-calculations/) — Growth rate computation patterns
+- [Common Data Analysis Mistakes - NetSuite](https://www.netsuite.com/portal/resource/articles/data-warehouse/data-mistakes.shtml) — General analytics pitfalls
 
 ---
 
 **Research completed:** 2026-02-09
-**Ready for roadmap:** Yes
 
-**Next step:** Roadmap creation using this summary as input. Phase structure and ordering established. Research flags identified for Phases 3-4. Architectural conflicts resolved (extend financial, extend glossary). All critical pitfalls documented with prevention strategies.
+**Ready for roadmap:** YES
+
+All four research dimensions (stack, features, architecture, pitfalls) reached HIGH confidence. Phase structure clear (14: Division, 15: Analytics, 16: Dashboard, 17: Payroll, 18: Integration). Discovery queries identified (10-15 minutes in Phase 14). Brownfield advantage leveraged (49 shipped requirements, 73 validated queries, 8 proven skills). Critical pitfalls documented with mitigations. No architectural unknowns blocking roadmap creation.

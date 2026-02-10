@@ -1,7 +1,7 @@
-# Domain Pitfalls
+# Domain Pitfalls: v1.2 Analytics, Dashboards & Division Support
 
-**Project:** Cornerstone v1.1 -- Read-Layer Domain Expansion
-**Domains:** Financial (AR/AP/P&L/Cash), Customer Intelligence, Inventory, Production, Reports Catalog
+**Project:** Cornerstone v1.2 -- Analytics, Dashboards & Division Support
+**Domains:** Sales Forecasting, Trend Detection, Executive Dashboards, Division Filtering, Payroll Expense (GL-based)
 **Researched:** 2026-02-09
 **Calibration:** v1.0 TransDetailParam IsActive bug = $1.3M revenue discrepancy. All severity ratings use this as the "Critical" reference point.
 
@@ -9,417 +9,374 @@
 
 ## Critical Pitfalls
 
-Mistakes that produce wrong numbers, break trust, or require rewrites. Each of these has a real analog in v1.0 or a demonstrated data pattern in the FLS database.
+Mistakes that produce wrong numbers, break the 99.98% accuracy standard, or require architectural rework. Each of these has evidence from the FLS database, the Cyrious wiki, or prior milestone discoveries.
 
 ---
 
-### Pitfall C1: GL Sign Convention Inversion (Financial Domain)
+### Pitfall C1: NULL DivisionID Silently Excludes Records from Division Filters
 
-**What goes wrong:** Revenue queries return negative numbers (or expenses return negative), producing nonsensical P&L reports. Revenue accounts store amounts as negative (credits) while expense accounts store amounts as positive (debits). A skill that does `SUM(Amount)` on revenue accounts gets the wrong sign.
+**What goes wrong:** A division filter query like `WHERE th.DivisionID = 10` silently excludes all records where `DivisionID IS NULL`. At FLS, NULL DivisionID records default to the Company Division (ID 10), so a "Banner Division sales" query misses an unknown number of orders with NULL division assignments, potentially understating revenue by tens or hundreds of thousands of dollars.
 
-**Why it happens:** Standard double-entry accounting uses debit-positive/credit-negative conventions. Most developers expect revenue to be positive. The GL view and Ledger table both follow this convention, and there is no flag on the row indicating "this should be negated for display."
+**Why it happens:** `DivisionID` is nullable in TransHeader, Ledger/GL, Account, Inventory, Journal, and TransDetail. Control's own Crystal Reports and wiki SQL scripts universally use `COALESCE(DivisionID, 10)` to handle NULLs. A developer who writes `WHERE DivisionID = 10` instead of `WHERE COALESCE(DivisionID, 10) = 10` gets different results. NULL != 10 in SQL, so NULLs are excluded from both division buckets and silently vanish from all division-filtered reports.
 
-**Consequences:** P&L shows negative revenue or negative expenses. If uncaught, the skill returns "Revenue: -$3,053,541" to the user, which is obviously wrong. More subtly, if gross margin is calculated as `Revenue - COGS` and both signs are wrong, the margin could look correct but the components are inverted.
+**Evidence:** The Cyrious wiki documents this pattern in 40+ SQL queries across integrity checks, AR reports, AP reports, and GL reconciliation scripts. Every single one uses `COALESCE(DivisionID, 10)`. The wiki troubleshooting section explicitly states: "Always use COALESCE(DivisionID, 10) -- DivisionID can be NULL and 10 is the default." The support wiki even documents a procedure to find and fix NULL DivisionID entries in the Ledger table: `SELECT * FROM Ledger WHERE ID > 0 AND DivisionID IS NULL`.
+
+**Consequences:** Revenue by division does not sum to total revenue. "Banner Division: $2.5M + Apparel Division: $200K = $2.7M" but total revenue is $3.05M. The $350K gap is records with NULL DivisionID. This destroys trust in every division-filtered metric. Worse, it silently understates the Company Division's numbers because those are the ones that default to 10.
 
 **Prevention:**
-- Hardcode the sign convention rule into the financial skill: `SUM(-Amount)` for GLClassificationType IN (4000, 4001) and `SUM(Amount)` for GLClassificationType IN (5001, 5002)
-- Add a validation check: GL-based revenue for 2025 must approximately match the known $3,053,541.85 benchmark
-- The existing `control-erp-financial` skill already documents this correctly; the pitfall is in failing to propagate this rule to every query pattern
+- MANDATORY RULE: Every query that filters or groups by DivisionID MUST use `COALESCE(DivisionID, 10)` instead of bare `DivisionID`
+- This applies to: TransHeader.DivisionID, Ledger.DivisionID, GL.DivisionID, Account.DivisionID, Inventory.DivisionID, Journal.DivisionID
+- Validation check: `SELECT SUM(SubTotalPrice) FROM TransHeader WHERE TransactionType=1 AND IsActive=1 AND SaleDate IS NOT NULL AND YEAR(SaleDate)=2025` must equal the sum of per-division breakdowns
+- Template the COALESCE pattern into every division-aware query -- never let a bare DivisionID comparison pass code review
 
-**Detection:** Any P&L query that returns negative revenue or negative expenses.
+**Detection:** Compare total revenue (un-filtered) with SUM of per-division revenues. If they do not match, NULL DivisionIDs are being dropped.
 
-**Severity:** HIGH -- wrong sign on $3M of revenue is immediately visible, but the subtler case of wrong-sign COGS producing an incorrect margin percentage would be harder to detect.
+**Severity:** CRITICAL -- This is the v1.2 equivalent of the TransDetailParam IsActive bug. It silently excludes valid records from results, producing revenue numbers that are wrong by an unquantified amount. The discrepancy could be $100K+ for the Company Division.
 
-**Domain/Phase:** Financial skill, earliest phase. Must be baked into every GL query template.
+**Phase:** Must be the FIRST rule established in the division filtering framework before any division-filtered query is written.
 
 ---
 
-### Pitfall C2: GL View vs Ledger Table Confusion (Financial Domain)
+### Pitfall C2: DivisionID vs ProductionDivisionID vs ShipFromDivisionID Confusion
 
-**What goes wrong:** Financial queries use the `Ledger` table directly instead of the `GL` view, including ~307K off-balance-sheet entries that distort financial totals. Or conversely, production cost queries use the `GL` view and miss off-balance-sheet cost entries.
+**What goes wrong:** The skill uses the wrong DivisionID field for a query, producing results that assign revenue or costs to the wrong division. A "Banner Division production" query uses `TransHeader.DivisionID` (sales division) when it should use `TransDetail.ProductionDivisionID`, or vice versa.
 
-**Why it happens:** `GL` is a VIEW defined as `SELECT * FROM Ledger WHERE OffBalanceSheet = 0`. The name "GL" is intuitive for financial queries, but developers who inspect the schema see `Ledger` as the "real" table with 2.75M rows and might query it directly, not realizing ~11% of entries are off-balance-sheet cost accounting entries that should be excluded from financial reports.
+**Why it happens:** TransHeader has THREE division-related fields:
+- `DivisionID` -- The sales/billing division (which division "owns" this order for revenue purposes)
+- `ProductionDivisionID` -- Which division handles production (may differ from sales division)
+- `ShipFromDivisionID` -- Which division ships the order
 
-**Consequences:**
-- Financial reports inflated by off-balance-sheet entries (expense double-counting for parts expensed at purchase)
-- Production cost analysis that misses off-balance-sheet entries (understating true production costs by the amount tracked in NodeIDs 60/61)
+TransDetail also has `ProductionDivisionID` (FK to DivisionData.ID). Additionally, both have `*Overridden` bit fields (`DivisionIDOverridden`, `ProductionDivisionIDOverridden`) that indicate when the value was manually changed from the default.
+
+For FLS, an apparel order could have DivisionID = Apparel but ProductionDivisionID = Company (if the Company division does the printing). Using the wrong field produces wrong division-level metrics depending on whether the question is about revenue attribution or production workload.
+
+**Consequences:** Revenue attributed to the wrong division, or production costs appearing in the wrong division's P&L. If Apparel orders are sometimes produced by the Company division, using ProductionDivisionID for revenue would shift Apparel revenue to Company.
 
 **Prevention:**
-- Rule: "Use `GL` view for all financial queries. Use `Ledger` table only when explicitly analyzing production costs including non-accrual materials."
-- The skill should never reference `FROM Ledger` in a standard financial query template
-- Production cost queries should explicitly note when they include `OffBalanceSheet = 1` entries and explain why
+- Revenue/sales queries: Always use `TransHeader.DivisionID` (or `COALESCE(TransHeader.DivisionID, 10)`)
+- Production/cost queries: Use `TransDetail.ProductionDivisionID` or `TransHeader.ProductionDivisionID`
+- Shipping queries: Use `TransHeader.ShipFromDivisionID`
+- GL/Ledger queries: Use `GL.DivisionID` (which reflects the accounting division)
+- Document which DivisionID field answers which question in the skill
+- Natural language mapping: "Apparel revenue" -> TransHeader.DivisionID. "Apparel production" -> ProductionDivisionID.
 
-**Detection:** Compare `SELECT COUNT(*) FROM GL` vs `SELECT COUNT(*) FROM Ledger`. If the skill is using Ledger and the user asked a financial question, it is wrong.
+**Detection:** If Apparel Division revenue seems unexpectedly high or low compared to Gretel's expectations, check which DivisionID field is being used.
 
-**Severity:** HIGH -- ~11% data distortion. Off-balance-sheet entries for parts expensed at purchase would inflate COGS/expense figures, producing wrong profit margins.
+**Severity:** HIGH -- Wrong division attribution for a significant portion of orders. The magnitude depends on how often ProductionDivisionID differs from DivisionID at FLS, which has not yet been validated.
 
-**Domain/Phase:** Financial skill. Must be established in the query architecture before any GL query patterns are written.
+**Phase:** Division filtering framework phase. Must be documented before any division-filtered query patterns.
 
 ---
 
-### Pitfall C3: DueDate Semantic Overloading (Financial Domain -- AR/AP)
+### Pitfall C3: Ledger DivisionID vs ProcessedDivisionID for GL/Financial Queries
 
-**What goes wrong:** AR aging uses `TransHeader.DueDate` as the payment deadline, producing completely wrong aging buckets. A $50K order due to ship next week shows as "current" in AR aging when it actually has a 90-day-old unpaid invoice.
+**What goes wrong:** A financial query for "Apparel Division P&L" uses `Ledger.DivisionID` when it should use `Ledger.ProcessedDivisionID`, or vice versa, producing a P&L that misattributes entries between divisions.
 
-**Why it happens:** `TransHeader.DueDate` means **production/shipping deadline** for Type 1 orders but **vendor payment deadline** for Type 8 bills. There is no dedicated "payment due date" field on TransHeader. The actual payment due date for AR is calculated at runtime as `SaleDate + PaymentTerms.GracePeriod`. This is the exact same class of bug as v1.0's "use SaleDate not OrderCreatedDate" -- a field that sounds right but means something different than expected.
+**Why it happens:** The Ledger table has TWO division fields:
+- `DivisionID` -- The division of the related order/entity (populated from TransHeader.DivisionID)
+- `ProcessedDivisionID` -- The division in which the GL entry was processed/posted
 
-**Consequences:** AR aging buckets are completely wrong. Orders that shipped yesterday (DueDate = yesterday) but were invoiced 60 days ago would appear "current" instead of "31-60 days." Users lose trust in the entire AR skill.
+These can differ when a payment is posted in one division's context but applies to an order in another division. The Cyrious wiki documents a bug (CCON-5479): "Payments - Payment Ledger not updating the ProcessedDivisionID records in SQL when changing the Division a payment is made for." This means historical data may have inconsistent ProcessedDivisionID values.
+
+The wiki's SQL integrity scripts use `DivisionID` (with COALESCE to 10) for GL balance reconciliation, NOT ProcessedDivisionID. This suggests `DivisionID` is the correct field for financial reporting by division, while `ProcessedDivisionID` is a system-level field.
+
+**Consequences:** Division-level P&L shows wrong expense or revenue allocations. Cross-division payments appear in the wrong division's financial summary.
 
 **Prevention:**
-- AR aging MUST use `SaleDate` as the aging anchor (invoice date), NOT `DueDate`
-- AP aging MUST use `DueDate` as the aging anchor (vendor payment deadline) -- this IS correct for bills
-- Document the semantic difference prominently: "DueDate = ship date for orders, payment date for bills"
-- The existing `control-erp-financial` skill already implements this correctly; the risk is in new query patterns or customer intelligence queries that cross-reference AR data
+- Use `COALESCE(GL.DivisionID, 10)` for all division-filtered financial queries (consistent with Cyrious wiki patterns)
+- Do NOT use `ProcessedDivisionID` for financial reporting unless specifically analyzing processing/posting workflow
+- Validate: P&L by division should sum to total P&L (same COALESCE pattern as C1)
+- Note the CCON-5479 bug: historical ProcessedDivisionID may be unreliable for cross-division payments
 
-**Detection:** Validate AR aging against Control's built-in "A_R Detail.rpt" report. If buckets don't match, DueDate is likely being misused.
+**Detection:** Compare `GROUP BY DivisionID` results with `GROUP BY ProcessedDivisionID` results. If they differ significantly, investigate which one matches Control's built-in reports.
 
-**Severity:** CRITICAL -- This is the v1.0 SaleDate/OrderCreatedDate bug pattern in a new domain. Wrong AR aging would produce incorrect collections prioritization.
+**Severity:** HIGH -- Wrong division P&L. Magnitude depends on volume of cross-division transactions at FLS.
 
-**Domain/Phase:** Financial skill (AR/AP section). Must be established in the first AR query template.
+**Phase:** Division filtering framework, specifically the financial/GL integration layer.
 
 ---
 
-### Pitfall C4: Inventory Quantity Field Confusion (Inventory Domain)
+### Pitfall C4: Forecasting with Insufficient Historical Data Produces Misleading Projections
 
-**What goes wrong:** The skill reports "available inventory" using `QuantityOnHand` instead of `QuantityAvailable`, overstating what can actually be allocated to new orders. Or it reports raw `QuantityBilled` instead of `QuantityOnHand`, missing received-but-not-yet-billed stock.
+**What goes wrong:** A sales forecast projects "Apparel Division will grow 40% next year" based on 6 months of data from a new division, or projects "Q1 revenue will be $900K" based on a seasonal pattern derived from only 2 years of history, which contains COVID-era distortions or business model changes.
 
-**Why it happens:** Control's inventory model has a specific quantity chain:
-```
-QuantityBilled + QuantityReceivedOnly = QuantityOnHand
-QuantityOnHand - QuantityReserved = QuantityAvailable
-QuantityAvailable + QuantityOnOrder = QuantityExpected
-```
-Each field answers a different question. A developer unfamiliar with this chain will pick the wrong field. `QuantityOnHand` sounds like "what's available" but it includes stock reserved for existing orders.
+**Why it happens:** FLS has ~2+ years of historical data. For SQL-only forecasting (no Python ML), the system can use moving averages, linear regression via window functions, and seasonal decomposition ratios. But:
+- 2 years of monthly data = 24 data points -- barely enough for seasonal pattern detection
+- If Apparel Division is newer, it may have even fewer data points
+- Business model changes (adding product lines, losing/gaining major customers) create structural breaks that simple trend extrapolation misses
+- Seasonal patterns in the sign/banner industry (trade show season, outdoor advertising season) may not follow standard retail seasonality
 
-**Consequences:** If the skill reports `QuantityOnHand` as available stock, users might commit inventory that is already reserved for in-progress orders. This is operationally dangerous for a custom flag/banner shop where materials are cut-to-order and cannot be easily reallocated.
+**Consequences:** Overconfident forecasts that mislead business planning. "We project $4.2M next year" when the uncertainty range is actually $3.0M-$5.5M. Or seasonal adjustments that amplify noise in thin months (e.g., a single large order in January 2025 makes the model predict a strong January 2026 that doesn't materialize).
 
 **Prevention:**
-- Document the quantity chain in the skill with explicit guidance: "When user asks 'how much X do we have,' use `QuantityAvailable`. When user asks 'what's on the shelf,' use `QuantityOnHand`. When user asks 'what's coming,' use `QuantityExpected`."
-- Natural language mapping: "available" -> `QuantityAvailable`, "on hand" / "in stock" -> `QuantityOnHand`, "on order" -> `QuantityOnOrder`, "reserved" -> `QuantityReserved`
-- Validate against Control's "Inventory Listing.rpt" report
+- Always show confidence context: "Based on [N] months of history" and "Historical range: $X-$Y"
+- Use simple moving averages (3-month, 6-month) rather than complex seasonal decomposition with only 24 data points
+- For annual forecasts, present as a range: "Projected: $X-$Y based on [method]"
+- Flag when a single large customer or order distorts a period (FLS's top customer FLASH is ~14% of revenue -- if they have an unusually large or small month, it swings the trend)
+- Compare forecast against naive baseline: "vs. same period last year" and "vs. trailing average"
+- Never forecast Apparel Division separately if it has fewer than 12 months of division-tagged data -- use blended company data instead
+- SQL approach should be: moving averages via window functions (proven, simple), NOT attempting Holt-Winters or exponential smoothing in pure SQL (error-prone, hard to validate)
 
-**Detection:** Compare skill output for "how much vinyl do we have" against the Inventory screen in Control. If reserved quantity is non-trivial, the difference will be visible.
+**Detection:** If a forecast shows >20% growth or >20% decline from trailing 12-month actual, flag it as "outside historical range" and require human review. Compare projection against what actually happened in prior periods.
 
-**Severity:** HIGH -- For a $3M signage business, committing reserved inventory to new orders could delay in-progress production and damage customer relationships.
+**Severity:** HIGH -- Bad forecasts drive bad business decisions (overhiring, over-ordering materials, under-investing). Not as immediately detectable as wrong revenue numbers, which makes it more insidious.
 
-**Domain/Phase:** Inventory skill. Must be established before any inventory quantity query patterns.
+**Phase:** Sales forecasting phase. Must establish methodology constraints before any forecast queries are written.
 
 ---
 
-### Pitfall C5: Inventory Table vs Part Table Quantity Duplication (Inventory Domain)
+### Pitfall C5: Dashboard Metrics Inconsistent with Existing Skill Results
 
-**What goes wrong:** The skill queries `Part.QuantityOnHand` / `Part.QuantityAvailable` instead of `Inventory.QuantityOnHand` / `Inventory.QuantityAvailable`, getting aggregate quantities instead of warehouse-specific quantities. Or worse, it confuses the two and double-counts.
+**What goes wrong:** The executive dashboard shows "YTD Revenue: $2,980,000" while the sales skill returns "$3,052,952.52" for the same query. The user sees two different numbers from the same system and loses trust in both.
 
-**Why it happens:** Both `Part` (7,684 rows) and `Inventory` (27,268 rows) have quantity fields with identical names: `QuantityOnHand`, `QuantityReserved`, `QuantityAvailable`, `QuantityOnOrder`. The `Part` table has aggregate quantities across all warehouses. The `Inventory` table has per-warehouse/per-division quantities (Part:Inventory is 1:many via `Inventory.PartID`). Also, `Inventory.ClassTypeID = 12200` for warehouse-level records vs group/summary records.
+**Why it happens:** The dashboard aggregates data independently from the existing skills. If the dashboard query uses slightly different filters (e.g., missing `SaleDate IS NOT NULL`, using `TotalPrice` instead of `SubTotalPrice`, or not applying the StatusID 9 exclusion consistently), it produces different numbers. This is the v1.2 manifestation of v1.1's Pitfall I1 (Contradicting Core Skill Business Rules) and I3 (Duplicated Query Patterns).
 
-**Consequences:** Queries that join Part and Inventory without proper filtering double-count quantities. Queries that use Part quantities instead of Inventory miss warehouse-level detail. For FLS with multiple warehouses (10, 11 for Company division; 10000, 10001 for Apparel), this produces wrong stock levels per location.
+With dashboards, the risk is amplified because:
+- Dashboards display multiple metrics side-by-side, making inconsistencies visible
+- React artifact dashboards are generated per-request, so each generation could use slightly different SQL
+- A "morning report" that shows revenue alongside AR alongside production metrics must be consistent across ALL three source skills
+
+**Consequences:** Two numbers for the same metric visible to the same user at the same time. This is a credibility-destroying outcome for a system validated to 99.98% accuracy.
 
 **Prevention:**
-- Rule: "Always query `Inventory` table for quantity questions, filtering `ClassTypeID = 12200` for warehouse-level records. Never use `Part.QuantityXxx` fields for inventory reporting."
-- If a user asks "how much X across all warehouses," use `SELECT SUM(QuantityAvailable) FROM Inventory WHERE PartID = @PartID AND ClassTypeID = 12200`
-- If a user asks "how much X in [warehouse]," add `AND WarehouseID = @WarehouseID`
+- Dashboard queries MUST use the EXACT same SQL patterns as the existing skills -- not "similar" patterns
+- Create a shared query template library that both skills and dashboards reference
+- The dashboard skill should call the SAME revenue formula from control-erp-core:
+  ```sql
+  SELECT SUM(SubTotalPrice) FROM TransHeader
+  WHERE TransactionType = 1 AND IsActive = 1 AND SaleDate IS NOT NULL
+  ```
+- Every metric on the dashboard must trace back to a specific skill and query template
+- Validation: dashboard metrics must match individual skill results for the same parameters
+- Consider generating dashboard content by running the same NL queries that the skills already handle, rather than building separate dashboard-specific SQL
 
-**Detection:** Compare `Part.QuantityOnHand` for a given part with `SUM(Inventory.QuantityOnHand) WHERE PartID = Part.ID AND ClassTypeID = 12200`. If they differ (due to group records or stale aggregates), the Part-level query is wrong.
+**Detection:** Run the dashboard and the individual skill queries side-by-side. Any discrepancy > $1 indicates a query inconsistency.
 
-**Severity:** HIGH -- Wrong inventory levels affect reorder decisions and order fulfillment.
+**Severity:** CRITICAL -- Visible inconsistency between dashboard and conversational queries. Users see the dashboard first thing in the morning and then ask follow-up questions via NL. If numbers differ, the entire system's credibility is destroyed.
 
-**Domain/Phase:** Inventory skill. Must be established in the data model documentation.
+**Phase:** Dashboard phase. Must be addressed in the dashboard architecture before any React artifacts are built.
 
 ---
 
-### Pitfall C6: TimeCard ClassTypeID Filtering Omission (Production Domain)
+### Pitfall C6: Division Filtering on GL Does Not Match Division Filtering on TransHeader
 
-**What goes wrong:** Production time queries return inflated hours because they count both parent clock-in/out records (ClassTypeID 20050) AND station time detail records (ClassTypeID 20051) when they should only count one or the other.
+**What goes wrong:** "Apparel Division revenue (TransHeader)" shows $200K but "Apparel Division revenue (GL)" shows $180K. The discrepancy is because GL entries may have different DivisionID values than their parent TransHeader due to timing, manual corrections, or the CCON-5479 bug.
 
-**Why it happens:** The TimeCard table stores two types of records using ClassTypeID as a discriminator: 20050 = clock in/out parent record (top-level time card entry) and 20051 = station time detail (time spent at a specific station). If you query `SUM(StraightTime)` from TimeCard without filtering ClassTypeID, you sum the parent totals AND the child details, roughly doubling the actual hours.
+**Why it happens:** Revenue can be measured two ways:
+1. **TransHeader-based:** `SUM(SubTotalPrice) WHERE TransactionType=1 AND COALESCE(DivisionID, 10) = @DivisionID` -- the validated 99.98% approach
+2. **GL-based:** `SUM(-Amount) WHERE GLAccountID IN (revenue accounts) AND COALESCE(DivisionID, 10) = @DivisionID`
 
-**Consequences:** Employee hours doubled. Labor cost reports show 2x the actual cost. Production efficiency metrics are halved. This is analogous to the v1.0 TransHeader/TransDetail SubTotalPrice gap but worse -- it is not a small $7K gap but a potential 2x multiplier.
+These SHOULD agree, but the Ledger/GL entries are created during status transitions and may inherit a different DivisionID than the TransHeader if:
+- The order's division was changed after GL entries were posted
+- The CCON-5479 bug caused ProcessedDivisionID to not update
+- Manual GL adjustments don't carry the correct DivisionID
+- Off-balance-sheet entries have different division tagging
 
-**Prevention:**
-- Rule: "For total employee hours worked, use `ClassTypeID = 20050` (parent records). For time-by-station breakdown, use `ClassTypeID = 20051` (detail records). Never mix them in the same SUM."
-- Natural language mapping: "how many hours did X work" -> ClassTypeID 20050. "how long was X at station Y" -> ClassTypeID 20051.
-- The TimeCard schema file already documents this: "ClassTypeID 20050 = Clock in/out parent record, ClassTypeID 20051 = Station time detail record."
+The existing v1.1 pitfall m5 (Ledger.EntryDateTime vs TransHeader.SaleDate timing) already documented minor discrepancies between the two approaches. Adding division filtering amplifies this because you're now partitioning an already-small discrepancy across divisions.
 
-**Detection:** Compare `SUM(StraightTime) WHERE ClassTypeID = 20050 AND EmployeeID = @ID` with `SUM(StraightTime) WHERE ClassTypeID = 20051 AND EmployeeID = @ID`. If they are approximately equal, you found the double-counting pattern.
-
-**Severity:** CRITICAL -- 2x labor hours means 2x labor cost, producing dramatically wrong production cost reports. This is the production domain's equivalent of the $1.3M TransDetailParam bug.
-
-**Domain/Phase:** Production skill. Must be the first rule established for TimeCard queries.
-
----
-
-### Pitfall C7: TimeCard Geography Column Query Failures (Production Domain)
-
-**What goes wrong:** Queries against the TimeCard table fail with a SQL Server error because `SELECT *` or column inclusion of `LatLonStart` / `LatLonEnd` (geography/spatial data type) causes the MCP MSSQL tools to crash.
-
-**Why it happens:** TimeCard has two geography columns: `LatLonStart` and `LatLonEnd`. The MCP MSSQL tools cannot serialize geography data types. This was a known v1.0 issue that forced explicit column selection for any table with spatial data.
-
-**Consequences:** Skill queries that use `SELECT * FROM TimeCard` or include these columns will fail silently or with cryptic errors. The user gets no results when asking about employee hours.
+**Consequences:** Division-level P&L (GL-based) does not reconcile with division-level revenue (TransHeader-based). The P&L might show Apparel at $180K while the sales dashboard shows Apparel at $200K. This is confusing and erodes trust.
 
 **Prevention:**
-- Rule: "Never use SELECT * on TimeCard. Always explicitly list columns, excluding LatLonStart and LatLonEnd."
-- Template all TimeCard queries with explicit column lists
-- This rule already exists in CLAUDE.md ("Skip geography/spatial columns - they cause errors") and in the TimeCard schema notes
+- Establish a single authoritative source for each metric:
+  - **Revenue by division:** TransHeader-based (primary, validated) with COALESCE pattern
+  - **P&L by division:** GL-based (necessary for expense breakdown) with COALESCE pattern
+  - **Document the expected discrepancy** between the two approaches and set tolerance thresholds
+- If the GL vs TransHeader discrepancy for a division exceeds 2%, flag it and investigate
+- Consider adding a reconciliation query to the skill that identifies orders where `COALESCE(TransHeader.DivisionID, 10) != COALESCE(GL.DivisionID, 10)` for GL entries related to that order
+- The dashboard should clearly label which data source each metric uses
 
-**Detection:** Any TimeCard query that returns an error mentioning geography or spatial types.
+**Detection:** Compare TransHeader revenue by division with GL revenue by division. Expect minor discrepancies (<1%) but flag anything larger.
 
-**Severity:** MEDIUM -- Causes query failures, not wrong data. But it blocks all production time reporting until fixed.
+**Severity:** HIGH -- Confusing but not catastrophically wrong. The discrepancy is bounded by the overall GL-vs-TransHeader variance (previously validated as small).
 
-**Domain/Phase:** Production skill. Must be documented in the first TimeCard query template.
-
----
-
-### Pitfall C8: Journal Multi-Purpose Table Conflation (Production + Financial Domains)
-
-**What goes wrong:** A production query for station time tracking accidentally pulls payment records, closeout records, or CRM activity records from the Journal table. Or a financial query for payments accidentally includes production station changes.
-
-**Why it happens:** The Journal table (5.18M rows) is a mega-table used for at least 6 different purposes:
-- Payments (ClassTypeID 20000-20038) -- splits with Payment table
-- Closeouts (ClassTypeID 8911-8919)
-- Station time tracking (JournalActivityType = 45)
-- Contact activities (various ClassTypeIDs)
-- Email activities
-- Macro activities
-
-Without proper ClassTypeID or JournalActivityType filtering, a query against Journal will conflate unrelated records. The Payment table has `Payment.ID = Journal.ID` (split table pattern), so joining Journal and Payment requires understanding they share the same ID space.
-
-**Consequences:** Production station time queries inflated by non-station Journal entries. Payment totals contaminated by non-payment Journal records. The 5.18M-row table makes unfiltered queries slow and wrong simultaneously.
-
-**Prevention:**
-- Rule: "Always filter Journal by ClassTypeID or JournalActivityType. Never query Journal unfiltered."
-- Station time: `WHERE JournalActivityType = 45`
-- Payments: `WHERE ClassTypeID IN (20000, 20001, 20002, 20003, 20004, 20005, 20006, 20007, 20009)` or use the Payment table directly
-- Closeouts: `WHERE ClassTypeID IN (8911, 8912, 8913, 8914, 8915, 8916, 8917, 8918, 8919)`
-- Document the Journal-Payment split table pattern prominently
-
-**Detection:** Query `SELECT ClassTypeID, COUNT(*) FROM Journal GROUP BY ClassTypeID` -- if you see dozens of different ClassTypeIDs, you know unfiltered queries will mix unrelated data.
-
-**Severity:** HIGH -- Produces wrong numbers in both production and financial domains.
-
-**Domain/Phase:** Both Production and Financial skills. Must be documented in each skill's Journal query section.
-
----
-
-### Pitfall C9: Account.CompanyName vs "AccountName" Confusion (Customer Domain)
-
-**What goes wrong:** Customer queries fail because the skill uses `Account.AccountName` (which does not exist) or joins on `Account.Name`. The actual field is `Account.CompanyName`. A second trap: `GLAccount.AccountName` exists (for chart of accounts) and could be confused with customer account names.
-
-**Why it happens:** Every other ERP system uses "AccountName" for customers. Control uses `CompanyName`. This was a known v1.0 gotcha documented in MEMORY.md. The risk in v1.1 is that a new Customer Intelligence skill re-introduces this error, especially if the developer consults generic ERP patterns rather than the existing schema documentation.
-
-**Consequences:** SQL errors (column not found) or, worse, a join to GLAccount.AccountName producing chart-of-accounts names instead of customer names.
-
-**Prevention:**
-- Already documented in MEMORY.md: "Account table uses CompanyName, NOT AccountName"
-- The Customer Intelligence skill MUST reference the Account schema and use `CompanyName` consistently
-- Test with a simple query: `SELECT TOP 1 CompanyName FROM Account WHERE IsClient = 1`
-
-**Detection:** Any SQL error mentioning "Invalid column name 'AccountName'" on the Account table.
-
-**Severity:** MEDIUM -- Causes query failures, not wrong data. Easy to fix once detected.
-
-**Domain/Phase:** Customer Intelligence skill. Must be established in the Account table documentation.
-
----
-
-### Pitfall C10: IsClient/IsProspect/IsActive Triple-Flag Filtering (Customer Domain)
-
-**What goes wrong:** Customer intelligence queries include all 54,719 Account records (prospects, vendors, inactive, personal accounts) when they should only include active clients. Or they exclude prospects when the user explicitly asks about prospects.
-
-**Why it happens:** The Account table has multiple boolean classification flags:
-- `IsClient` = 1 for customers who have placed orders
-- `IsProspect` = 1 for leads who haven't ordered yet
-- `IsVendor` = implicit (accounts used as vendors on Type 7/8/9 transactions)
-- `IsActive` = 1 for active accounts
-- `IsPersonal` = personal accounts
-
-A query for "top customers" that omits `IsClient = 1 AND IsActive = 1` will include prospects, vendors, and inactive accounts. Conversely, a query for "how many prospects do we have" that filters `IsClient = 1` returns zero results.
-
-**Consequences:** Customer metrics (count, revenue per customer, CLV) are distorted. "We have 54,719 customers" vs the actual ~X active clients is a credibility-destroying error.
-
-**Prevention:**
-- Default filters for customer queries: `WHERE IsClient = 1 AND IsActive = 1`
-- Default filters for prospect queries: `WHERE IsProspect = 1 AND IsActive = 1`
-- Default filters for vendor queries: Join to TransHeader WHERE TransactionType IN (7, 8, 9)
-- Natural language mapping: "customers" / "clients" -> `IsClient = 1`. "prospects" / "leads" -> `IsProspect = 1`. "all accounts" -> no IsClient/IsProspect filter.
-- Always include `IsActive = 1` unless user explicitly asks about inactive/churned accounts
-
-**Detection:** `SELECT COUNT(*) FROM Account WHERE IsClient = 1 AND IsActive = 1` should return a number much smaller than 54,719.
-
-**Severity:** HIGH -- Wrong customer counts undermine all customer intelligence metrics.
-
-**Domain/Phase:** Customer Intelligence skill. First filter rule to establish.
-
----
-
-### Pitfall C11: Artwork Status Integer Magic Numbers (Production Domain)
-
-**What goes wrong:** Production artwork tracking queries use wrong StatusID values because the artwork status codes are not the same as order status codes. A query filtering `ArtworkGroup.StatusID = 3` (thinking "Sale" from Type 1 orders) gets no results because artwork uses a completely different status system.
-
-**Why it happens:** ArtworkGroup.StatusID uses its own status codes (linked to `_ArtworkStatus` lookup table):
-- In Design -> Pending Approval -> Approved -> Production Ready -> Produced (StatusID = 7)
-- Rejected is a separate status
-
-These are NOT the same as TransHeader StatusIDs (0-4, 9 for Type 1). A developer who has internalized the order status codes will incorrectly apply them to artwork.
-
-**Consequences:** Artwork pipeline queries return wrong counts. "How many proofs are pending approval" returns zero or wrong numbers. Production bottleneck analysis misidentifies where artwork is stuck.
-
-**Prevention:**
-- Document artwork statuses separately from order statuses
-- The wiki extract shows `StatusID < 7 = not yet produced, StatusID = 7 = Produced`
-- Join to `_ArtworkStatus` lookup table when displaying status names
-- Validate against ArtworkGroup data: `SELECT StatusID, COUNT(*) FROM ArtworkGroup WHERE IsActive = 1 GROUP BY StatusID`
-
-**Detection:** If a query for "pending approval" artwork returns zero results, the StatusID filter is likely wrong.
-
-**Severity:** MEDIUM -- Wrong production pipeline visibility. Operationally inconvenient but not financially damaging.
-
-**Domain/Phase:** Production skill (artwork subsection). Must be documented before artwork query patterns.
+**Phase:** Division filtering framework phase, specifically when integrating division filtering into the financial skill.
 
 ---
 
 ## Moderate Pitfalls
 
-Mistakes that cause delays, wrong-but-not-catastrophic results, or technical debt.
+Mistakes that cause delays, confusing results, or technical debt but do not produce catastrophically wrong numbers.
 
 ---
 
-### Pitfall M1: AR Report Includes WIP/Built Orders (Financial Domain)
+### Pitfall M1: Seasonal Pattern Overfitting with Only 24 Monthly Data Points
 
-**What goes wrong:** The skill's AR total does not match Control's built-in AR report because the skill only includes StatusID >= 3 (Sale/Closed), while Control's AR report also shows WIP/Built orders with balances for visibility (even though they haven't posted to the GL AR account).
+**What goes wrong:** The forecasting model detects "seasonality" that is actually noise. January 2025 had a large one-time order, so the model projects a strong January 2026. Or a model built on COVID-recovery years (2024-2025) extrapolates growth rates that are unsustainable.
 
-**Why it happens:** Control's AR report is a management view that includes orders in WIP/Built status with non-zero `BalanceDue`. The GL AR account (NodeID 14) only contains entries for orders that have reached Sale status. These are two different definitions of "AR" and both are used at FLS.
+**Why it happens:** With only ~24 months of monthly data (2024-2025 at FLS), the ratio-to-moving-average seasonal decomposition has exactly 2 data points per month. Any single anomalous month has 50% weight in the seasonal index for that month. This is statistically insufficient for reliable seasonal pattern detection.
 
 **Prevention:**
-- Document both definitions: "Financial AR = GL NodeID 14 balance. Management AR = TransHeader with BalanceDue > 0 across all active statuses."
-- Default to management AR (TransHeader-based, matching Control's report) for user queries about "AR" or "what's owed to us"
-- Use GL AR only when reconciling to the general ledger or generating trial balance
-- The existing `control-erp-financial` skill already handles this correctly; propagate the pattern
+- For seasonal decomposition, require at minimum 3 full years (36 months) before claiming seasonal patterns -- until then, use trailing moving averages only
+- Present all seasonality findings with the caveat: "Based on limited history (N months). Patterns may not repeat."
+- Use 3-month moving averages for smoothing (wide enough to dampen noise, narrow enough to capture genuine trends)
+- For any month where a single customer represents >20% of that month's revenue, note it as a potential outlier
+- Prefer YoY comparison over seasonal projection: "This month last year was $X" is more trustworthy than "Our model predicts $Y"
 
-**Detection:** Compare skill AR total with Control's "AR Report - Summary.rpt." If the skill is lower, it is missing WIP/Built orders.
+**Detection:** If the seasonal index for any month is >1.3x or <0.7x the average, the limited data may be overfitting to an outlier.
 
-**Severity:** MEDIUM -- Understated AR by the value of WIP/Built orders with deposits.
+**Severity:** MEDIUM -- Misleading but clearly labeled forecasts are less dangerous than silently wrong revenue numbers.
 
-**Domain/Phase:** Financial skill (AR section).
+**Phase:** Forecasting phase.
 
 ---
 
-### Pitfall M2: Payment/Journal Split Table Architecture (Financial Domain)
+### Pitfall M2: Division Filter Not Applied Consistently Across Cross-Skill Queries
 
-**What goes wrong:** Payment queries miss data because the developer queries `Payment` alone (286K rows) without realizing that payment amounts, dates, and transaction links live in the `Journal` table (where `Payment.ID = Journal.ID`). Or the developer queries `Journal` for payments but does not filter by payment ClassTypeIDs.
+**What goes wrong:** A user asks "Apparel Division morning report" and the dashboard shows Apparel-filtered revenue (correct) but company-wide AR aging (wrong) and company-wide production pipeline (wrong), because the division filter was only applied to the sales query but not propagated to financial and production sub-queries.
 
-**Why it happens:** Control uses a split table pattern: `Payment` stores payment-specific fields (TenderType, BankAccountID, card details) while `Journal` stores the common fields (DetailAmount, StartDateTime, TransactionID, AccountID, IsVoided). They share the same primary key. This is unusual in SQL databases.
+**Why it happens:** Division filtering is cross-cutting -- it needs to work across sales (TransHeader.DivisionID), financial (GL.DivisionID), customer intelligence (Account.DivisionID), inventory (Inventory.DivisionID / Warehouse.DivisionID), and production (TransDetail.ProductionDivisionID). Each domain has a different DivisionID location and different COALESCE semantics. A skill that adds division filtering to its own queries but relies on other skills (which lack division filtering) produces an inconsistent result.
+
+**Consequences:** Dashboard shows a mix of division-filtered and unfiltered metrics. "Apparel revenue: $200K" alongside "AR aging: $450K" (total, not Apparel). The user is confused about what they're seeing.
 
 **Prevention:**
-- Document the split table pattern: "Payment.ID = Journal.ID. To get payment amount, join: `Payment p INNER JOIN Journal j ON p.ID = j.ID`"
-- For payment amount, use `Journal.DetailAmount` (the Payment table does not have an Amount column -- it is on Journal)
-- Always filter `Journal.IsVoided = 0` to exclude voided payments
-- Filter `Journal.ClassTypeID IN (20001, 20009)` for individual order/bill payments
+- Division filtering must be implemented as a FRAMEWORK that all skills can consume, not as ad-hoc WHERE clauses in individual skills
+- Define a "division context" parameter that every query template accepts
+- Map which DivisionID field to use in each table:
+  | Table | Division Field | COALESCE Default |
+  |-------|---------------|-----------------|
+  | TransHeader | DivisionID | 10 |
+  | GL/Ledger | DivisionID | 10 |
+  | Account | DivisionID | 10 |
+  | Inventory | DivisionID | ? (needs validation) |
+  | Warehouse | DivisionID | N/A (not nullable) |
+  | TransDetail | ProductionDivisionID | ? (needs validation) |
+- Test the dashboard with explicit division filtering and verify ALL metrics are filtered
 
-**Detection:** If `SELECT Amount FROM Payment` fails (no Amount column), the split table pattern was missed.
+**Detection:** Run the dashboard for "Apparel Division" and check every metric. If any metric seems too large (close to company-wide total), the division filter was not applied.
 
-**Severity:** MEDIUM -- Blocks payment reporting until understood, but schema inspection reveals the issue quickly.
+**Severity:** MEDIUM -- Confusing but detectable. The user would notice "wait, that AR number seems high for Apparel."
 
-**Domain/Phase:** Financial skill (payments section).
+**Phase:** Division filtering framework phase. Must be completed BEFORE the dashboard phase, which consumes it.
 
 ---
 
-### Pitfall M3: TransHeader Polymorphism in Customer Intelligence (Customer Domain)
+### Pitfall M3: React Artifact Dashboard Imports Unsupported Libraries
 
-**What goes wrong:** Customer metrics queries (revenue per customer, order frequency) accidentally include vendor transactions (Type 7/8/9), estimates (Type 2), or service tickets (Type 6) in customer spending calculations.
+**What goes wrong:** The dashboard React artifact fails to render because it imports a library not available in the Claude artifact sandbox. The code references `date-fns`, `d3`, `@tremor/react`, or another charting library that is not in the supported set.
 
-**Why it happens:** TransHeader stores ALL transaction types in one table. `Account` serves as both customer and vendor. A query like `SELECT AccountID, SUM(SubTotalPrice) FROM TransHeader GROUP BY AccountID` conflates customer sales, vendor purchases, estimates, and service tickets -- all linked to the same Account records.
+**Why it happens:** Claude's React artifact sandbox supports a specific set of libraries: React, Tailwind CSS, Shadcn UI components, Lucide icons, and Recharts. It does NOT support external data fetching, arbitrary npm packages, or libraries outside this set. A dashboard design that assumes `d3.js` for complex visualizations or `date-fns` for date formatting will fail at render time.
 
 **Prevention:**
-- Customer revenue queries MUST include `TransactionType = 1 AND SaleDate IS NOT NULL` (from v1.0 core skill)
-- Customer order count MUST filter `TransactionType = 1`
-- Vendor spending queries MUST filter `TransactionType = 8`
-- The `control-erp-core` skill's standard filters must be applied in every customer intelligence query
+- Constrain all dashboard designs to: React + Tailwind CSS + Recharts (for charts) + Lucide (for icons) + Shadcn UI (for components)
+- Do NOT attempt: date-fns (use native JS Date), d3 (use Recharts), @tremor/react (not available), moment.js (not available)
+- Design the dashboard data flow as: SQL query -> formatted data -> passed as props to React component
+- The React artifact receives pre-computed data, not raw SQL results. All data transformation happens in the skill/query layer, not in the React component.
+- Test each chart type (line, bar, pie, table) individually before combining into a dashboard
 
-**Detection:** If top customers include vendor names (material suppliers), the TransactionType filter is missing.
+**Detection:** The React artifact shows an error or blank screen instead of the expected dashboard.
 
-**Severity:** MEDIUM -- Inflated customer metrics. A vendor with $500K in bills would appear as a "top customer."
+**Severity:** MEDIUM -- Blocks dashboard delivery but does not produce wrong data. Easy to fix by substituting supported libraries.
 
-**Domain/Phase:** Customer Intelligence skill. Apply core skill filters to every customer query.
+**Phase:** Dashboard phase. Establish library constraints before any React artifact development.
 
 ---
 
-### Pitfall M4: PartType Classification Ignorance (Inventory Domain)
+### Pitfall M4: Moving Average Window Functions Misconfigured for Forecast Projection
 
-**What goes wrong:** Inventory queries report labor hours and equipment time as "material inventory" because the skill treats all Part records equally without filtering by `Part.PartType`.
+**What goes wrong:** The SQL forecast query uses `ROWS BETWEEN 2 PRECEDING AND CURRENT ROW` for a 3-month moving average but fails to handle the edge cases at the beginning of the data series (first 2 months have fewer than 3 data points) or at the end (the forecast period has no actual data, so the moving average cannot be computed).
 
-**Why it happens:** Control's Part table stores 6 types of items: Labor, Material, Equipment, Outsource, Freight, Other. Only Material parts have physical inventory. Labor and Equipment parts track time, not stock. If the skill queries `SELECT ItemName, QuantityOnHand FROM Part WHERE TrackInventory = 1`, it includes labor parts.
+**Why it happens:** SQL window functions compute moving averages over existing rows. They cannot project forward into periods that do not yet exist. A forecast requires:
+1. Computing the moving average/trend from historical data
+2. Extrapolating the trend forward into future periods
+3. Optionally applying seasonal adjustment factors
+
+Step 2 cannot be done with a simple window function -- it requires generating future period rows (via a date/number table or CTE) and then applying the computed trend/seasonal factors. Many SQL forecasting tutorials only show step 1 and leave the reader to figure out steps 2-3.
 
 **Prevention:**
-- For physical inventory queries, filter by `Part.PartType` that corresponds to Material
-- For cost analysis queries, include all part types but categorize them
-- Document the PartType reference: discover actual values with `SELECT PartType, COUNT(*) FROM Part GROUP BY PartType`
-- Natural language mapping: "inventory" / "stock" / "materials" -> Material parts only. "costs" / "expenses" -> all part types.
+- Use a CTE to generate future period rows before applying the forecast formula:
+  ```sql
+  ;WITH Months AS (
+    SELECT 1 AS MonthNum UNION ALL SELECT MonthNum + 1 FROM Months WHERE MonthNum < 24
+  ),
+  HistoricalData AS (
+    -- Actual monthly revenue
+  ),
+  Trend AS (
+    -- Moving average and growth rate from historical data
+  )
+  SELECT ... FROM Months LEFT JOIN HistoricalData ...
+  ```
+- Keep the forecast SQL simple: 3-month or 6-month trailing average projected forward, optionally with YoY seasonal ratio
+- Do NOT attempt Holt-Winters exponential smoothing in pure SQL -- it requires iterative computation that is fragile in T-SQL
+- Validate the forecast against the last known actual period: if the model would have predicted last month within 15%, the methodology is reasonable
 
-**Detection:** If inventory listings include items like "Design Labor" or "Press Time," the PartType filter is missing.
+**Detection:** If the forecast query returns NULL or zero for future periods, the projection step is missing.
 
-**Severity:** MEDIUM -- Confusing results but not financially wrong (labor parts typically have 0 QuantityOnHand anyway).
+**Severity:** MEDIUM -- Produces missing forecasts rather than wrong ones. The user gets "no data" for future periods instead of a projection.
 
-**Domain/Phase:** Inventory skill.
+**Phase:** Forecasting phase.
 
 ---
 
-### Pitfall M5: Production Station Hierarchy Confusion (Production Domain)
+### Pitfall M5: Payroll GL Expense Queries Pick Up Non-Payroll Entries
 
-**What goes wrong:** Production queries count station time at both department level AND workstation level, or fail to aggregate workstation times up to department totals.
+**What goes wrong:** "Total payroll expense" includes non-payroll items from the same GL account categories, or misses payroll items that are posted to unexpected accounts.
 
-**Why it happens:** Stations have a hierarchical structure: Department (parent) > Workstation (child). `Station.ParentID` links workstations to departments. `Station.DepartmentID` provides a shortcut to the top-level department. When querying "time in Production department," the skill needs to include all workstations under that department, not just the department station itself.
+**Why it happens:** Payroll expense at FLS is queried via GL entries (per the project scope -- no deep TimeCard/Payroll tables). But GL expense accounts (GLClassificationType 5002) contain both payroll-related entries (salaries, taxes, benefits) and non-payroll expenses (rent, insurance, utilities). Without filtering to payroll-specific GL account NodeIDs, a "payroll expense" query returns all operating expenses.
+
+Additionally, the Ledger table has `PayrollID` and `EmployeeID` fields that can help identify payroll-related entries, but these are only populated for entries created by the payroll module -- manual payroll adjustments may not have these fields set.
 
 **Prevention:**
-- For department-level rollups: `WHERE Station.DepartmentID = @DepartmentStationID`
-- For specific workstation queries: `WHERE StationID = @WorkstationID`
-- Station hierarchy: `SELECT ID, StationName, ParentID, DepartmentID FROM Station WHERE IsActive = 1`
-- Use `Station.ShowOnTimeClock = 1` to filter to employee-clockable stations
+- Map the specific GL account NodeIDs that represent payroll at FLS (need to query: `SELECT ID, AccountName FROM GLAccount WHERE AccountName LIKE '%payroll%' OR AccountName LIKE '%salary%' OR AccountName LIKE '%wage%' OR AccountName LIKE '%benefit%'`)
+- Use `Ledger.PayrollID IS NOT NULL` as a secondary filter to identify payroll-originated entries
+- For "total payroll expense," sum the mapped payroll GL accounts, not all 5002-classified accounts
+- Present the breakdown: "Salaries: $X, Taxes: $Y, Benefits: $Z, Total Payroll: $Sum" so the user can verify reasonableness
+- Cross-validate: Carrie Goetelman runs payroll in Control and can confirm approximate totals
 
-**Detection:** If production time for a department is 0 but individual workstations show time, the query is filtering to the parent station ID only.
+**Detection:** If "payroll expense" is close to "total operating expenses," the filter is too broad. FLS payroll should be a fraction of the ~$3M revenue, not close to total OpEx.
 
-**Severity:** MEDIUM -- Wrong production efficiency metrics per department.
+**Severity:** MEDIUM -- Wrong payroll numbers, but the payroll expense feature is explicitly lightweight ("GL-based, no deep TimeCard/Payroll tables"), so expectations are moderate.
 
-**Domain/Phase:** Production skill (station tracking section).
+**Phase:** Payroll expense phase (likely a smaller sub-phase).
 
 ---
 
-### Pitfall M6: Report Catalog Metadata Limitations (Reports Domain)
+### Pitfall M6: Account.DivisionID Does Not Always Match TransHeader.DivisionID
 
-**What goes wrong:** The reports catalog skill promises to tell users what a Crystal Report does, but the .rpt files are encrypted binary (SAP Crystal Reports proprietary OLE compound format) that cannot be parsed without the Crystal Reports SDK. The skill ends up with inferred metadata only.
+**What goes wrong:** A customer intelligence query filtered by "Apparel Division customers" uses `Account.DivisionID` and returns a different customer list than "Apparel Division orders" which uses `TransHeader.DivisionID`. Customer X appears in Apparel's customer list but their orders show up in the Company Division.
 
-**Why it happens:** The report_summary.md explicitly notes: "SQL queries and field references were inferred from report filenames and database schema knowledge. The .rpt files use SAP Crystal Reports' proprietary encrypted OLE compound document format and cannot be parsed without the Crystal Reports SDK or designer application." The skill cannot deliver "what tables does this report use" with certainty.
+**Why it happens:** `Account.DivisionID` is the default division assigned to a customer account. `TransHeader.DivisionID` is the division assigned to a specific order, which can be overridden per-order (controlled by `TransHeader.DivisionIDOverridden`). A customer assigned to the Company Division could place an order manually assigned to the Apparel Division, or vice versa.
+
+**Consequences:** Division-filtered customer lists and division-filtered order lists disagree about which customers belong to which division. Dashboard showing "Apparel Division: 50 customers, $200K revenue" but querying those 50 customers' orders shows $180K because some of their orders were tagged to the Company Division.
 
 **Prevention:**
-- Be honest about confidence levels: report metadata is INFERRED, not extracted
-- The CrystalSystemReports, Report, ReportTemplate, and ReportElement tables in the database may contain some report metadata (report names, categories, parameters) that can supplement filename-based inference
-- Focus the reports skill on "which report answers what question" guidance rather than technical report internals
-- Cross-reference with wiki knowledge extracts for report documentation
+- For customer-level division filtering: use `Account.DivisionID` with COALESCE (answers "which customers are assigned to Apparel")
+- For order-level division filtering: use `TransHeader.DivisionID` with COALESCE (answers "which orders are attributed to Apparel")
+- For "Apparel Division revenue by customer": use `TransHeader.DivisionID` on the order, not `Account.DivisionID` on the customer
+- Document the distinction: "Division customers" != "customers with division orders"
+- The dashboard should be consistent: if it shows "Apparel Division" context, ALL metrics should use order-level division (TransHeader.DivisionID), not customer-level division
 
-**Detection:** If a user asks "what SQL does the Sales by Product report use" and the skill provides a confident answer, it is likely fabricated.
+**Detection:** Compare customer counts between Account.DivisionID-filtered and TransHeader.DivisionID-filtered queries. Differences indicate customers with cross-division orders.
 
-**Severity:** LOW -- Users asking about reports usually want guidance on which report to run, not the internal SQL. But overconfident answers about report internals would erode trust.
+**Severity:** MEDIUM -- Confusing but bounded. The delta is likely small (most customers probably order within their assigned division).
 
-**Domain/Phase:** Reports Catalog skill. Set expectations correctly in the skill description.
+**Phase:** Division filtering framework, specifically the customer integration layer.
 
 ---
 
-### Pitfall M7: PartUsageCard vs TransPart Confusion (Production + Inventory Domains)
+### Pitfall M7: Dashboard Text Summary and React Visual Show Different Time Ranges
 
-**What goes wrong:** Production cost queries use `TransPart` (estimated parts on orders, 2.5M rows) when they should use `PartUsageCard` (actual usage, 287K rows), or vice versa. Estimated costs diverge from actual costs, especially for custom work where material waste varies.
+**What goes wrong:** The morning text report says "February revenue: $180K" but the React chart shows a bar for February at $195K. The text used MTD through yesterday, the chart used MTD through today (or vice versa), or the text uses fiscal month boundaries while the chart uses calendar month boundaries.
 
-**Why it happens:** TransPart represents the ESTIMATED parts for an order (what the pricing formula calculated). PartUsageCard represents ACTUAL consumption (created when parts are used, time is clocked, or orders reach configured status). For a custom signage business, actual fabric usage frequently differs from estimates due to waste, reprints, or substitutions.
+**Why it happens:** The dashboard has two output modes: text summary and React visual. If they are generated by different queries or at different times, they can use different date boundaries. Additionally, if "this month" is computed differently (`MONTH(GETDATE()) = MONTH(SaleDate)` vs `SaleDate >= DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0) AND SaleDate < GETDATE()`), the results diverge.
+
+**Consequences:** The user reads the text summary and then looks at the chart. If numbers differ, they wonder which is right.
 
 **Prevention:**
-- For "what was the cost of this order" (actual): Use `PartUsageCard WHERE TransHeaderID = @ID`
-- For "what should this order cost" (estimated): Use `TransPart WHERE TransHeaderID = @ID`
-- For "estimated vs actual" comparison: Join both on TransHeaderID/TransDetailID
-- Natural language mapping: "actual cost" / "real cost" -> PartUsageCard. "estimated cost" / "projected cost" -> TransPart.
+- Define a single date computation for each time period and share it between text and visual:
+  ```sql
+  DECLARE @MTDStart DATETIME = DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0);
+  DECLARE @MTDEnd DATETIME = GETDATE();
+  ```
+- Both text and chart queries use the same @MTDStart and @MTDEnd
+- Include the date range in both outputs: "Revenue MTD (Feb 1-9): $180K"
+- The React artifact receives the same data array that the text summary was generated from -- do not re-query
 
-**Detection:** If production costs look too uniform (exactly matching pricing formulas), the skill is probably using TransPart instead of PartUsageCard.
+**Detection:** Compare any metric that appears in both text and chart. They should be identical.
 
-**Severity:** MEDIUM -- Wrong cost analysis, especially for variance reporting.
+**Severity:** MEDIUM -- Confusing but easily caught and fixed.
 
-**Domain/Phase:** Production and Inventory skills.
+**Phase:** Dashboard phase.
 
 ---
 
@@ -429,114 +386,132 @@ Mistakes that cause annoyance but are quickly fixable.
 
 ---
 
-### Pitfall m1: Account.PrimaryContactID Join Failure (Customer Domain)
+### Pitfall m1: DivisionData Table Has a System Row That Must Be Excluded
 
-**What goes wrong:** Customer queries that join `Account.PrimaryContactID = AccountContact.ID` return NULL contact names for accounts without a primary contact set. If the join is INNER instead of LEFT, these accounts are silently excluded.
+**What goes wrong:** Division queries include the system/default row (ID = -1, DivisionName = '.', IsActive = false) in results, showing an extra "division" that does not exist.
 
-**Prevention:** Always use `LEFT JOIN AccountContact ON Account.PrimaryContactID = AccountContact.ID` for customer reports. Count NULLs to quantify the gap.
+**Prevention:** Always filter `WHERE IsActive = 1 AND ID > 0` when querying DivisionData. The sample data shows ID=-1 is a system placeholder row (IsSystem=true, IsActive=false, DivisionName='.').
 
-**Severity:** LOW -- Missing contact names, not wrong data.
-
----
-
-### Pitfall m2: GoodsItemClassTypeID Polymorphic Link (Inventory + Production)
-
-**What goes wrong:** TransDetail.GoodsItemID is a polymorphic foreign key. Without checking `GoodsItemClassTypeID`, the skill joins to the wrong table (Product when it should be Part, or vice versa).
-
-**Prevention:** Rule: "When GoodsItemClassTypeID = 49 or 12000, join to Product. When GoodsItemClassTypeID = 30, join to Part. Always include ClassTypeID in the join condition."
-
-**Severity:** LOW -- Wrong product/part names in drill-down reports.
+**Severity:** LOW -- Extra row in results, not wrong data.
 
 ---
 
-### Pitfall m3: ClassTypeID 8000 vs 8001 in GLAccount Queries (Financial Domain)
+### Pitfall m2: SalesGoal Table Exists but May Not Be Division-Aware
 
-**What goes wrong:** GL account queries include category/folder nodes (ClassTypeID 8000) alongside leaf accounts (ClassTypeID 8001), producing duplicate or hierarchy-contaminated results.
+**What goes wrong:** The forecasting skill uses the SalesGoal table (248 rows, with GoalYear/GoalMonth/Goal columns) for comparison but does not realize SalesGoal has no DivisionID column. Goals cannot be broken down by division unless they are duplicated per division.
 
-**Prevention:** Filter `GLAccount.ClassTypeID = 8001` for actual accounts. Use `ClassTypeID = 8000` only when navigating the chart of accounts hierarchy. This is the same pattern as v1.0's "IsCategory in GL exports is derived from ClassTypeID: 8000=category/folder, 8001=leaf account."
+**Prevention:** Verify SalesGoal structure before building goal-vs-actual comparisons. If SalesGoal lacks DivisionID, it represents company-wide goals only. Division-level goal comparison would require either a new data source or acknowledging the limitation.
 
-**Severity:** LOW -- Extra rows in results, not wrong totals (category nodes typically have no direct Ledger entries).
-
----
-
-### Pitfall m4: Closeout Period Locking Ignorance (Financial Domain)
-
-**What goes wrong:** Financial queries for historical periods return results that seem to change over time because GL periods have been reopened and entries modified after the closeout boundary was moved.
-
-**Prevention:** For historical financial queries, note the last closeout dates. If querying a period that has been closed and potentially reopened, flag the result as potentially modified. Query: `SELECT CloseoutType, MAX(EndDate) AS LastClosedThrough FROM Closeout WHERE IsActive = 1 GROUP BY CloseoutType`
-
-**Severity:** LOW -- Rare edge case, only matters for auditing and month-over-month comparisons.
+**Severity:** LOW -- Missing feature, not wrong data.
 
 ---
 
-### Pitfall m5: Ledger.EntryDateTime vs TransHeader.SaleDate for Revenue Timing (Financial Domain)
+### Pitfall m3: React Artifact Recharts Number Formatting Differences
 
-**What goes wrong:** GL-based revenue (using `Ledger.EntryDateTime`) and order-based revenue (using `TransHeader.SaleDate`) disagree for the same period because of batch posting. Orders may be marked Sale at 3:59 PM but GL entries post with a slightly different timestamp.
+**What goes wrong:** The React chart shows "$3052952.52" instead of "$3,052,953" because Recharts does not automatically format currency values. Or percentages show as "0.147" instead of "14.7%".
 
-**Prevention:** Acknowledge both approaches in the skill and note that minor timing differences (<$1K) are expected. For reconciliation, use the core skill's validated revenue formula as the source of truth.
+**Prevention:** Always include number formatters in the React artifact:
+- Currency: `new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD', maximumFractionDigits: 0}).format(value)`
+- Percentage: `(value * 100).toFixed(1) + '%'`
+- Apply formatters to Recharts `tickFormatter`, `labelFormatter`, and tooltip props
 
-**Severity:** LOW -- Small discrepancies that are expected, not bugs.
+**Severity:** LOW -- Cosmetic issue, easily fixed.
+
+---
+
+### Pitfall m4: Trend Detection Confuses Customer Concentration Changes with Market Trends
+
+**What goes wrong:** The trend analysis shows "Swing Flags declining 15% YoY" when the actual situation is "FLASH (our largest customer) reduced their Swing Flag orders" -- it is a customer-specific change, not a market trend. The system presents it as a product line trend without context.
+
+**Prevention:** For any product line showing >10% change, drill into whether the change is driven by a small number of customers or a broad pattern. Report both the trend and the concentration: "Swing Flags -15% YoY. Top driver: FLASH reduced orders by $50K (60% of the decline)."
+
+**Severity:** LOW -- Misleading but not numerically wrong. Better context prevents misinterpretation.
+
+---
+
+### Pitfall m5: Warehouse DivisionID Is Not Nullable (Unlike Other Tables)
+
+**What goes wrong:** A division filtering query applies the `COALESCE(DivisionID, 10)` pattern to `Warehouse.DivisionID`, but Warehouse.DivisionID is NOT nullable (defined as `int NOT NULL`). The COALESCE is unnecessary but harmless. However, this creates a false pattern expectation that Warehouse follows the same rules as other tables.
+
+**Prevention:** Note that Warehouse.DivisionID is a reliable, non-nullable FK. Use it directly: `WHERE Warehouse.DivisionID = @DivisionID`. The COALESCE pattern is needed for TransHeader, Ledger, Account, Inventory, but NOT Warehouse.
+
+**Severity:** LOW -- No functional impact, but documents a schema inconsistency that could cause confusion.
 
 ---
 
 ## Integration Pitfalls
 
-Mistakes specific to adding new skills alongside existing v1.0 skills.
+Mistakes specific to adding v1.2 features alongside the existing 8-skill system.
 
 ---
 
-### Pitfall I1: Contradicting Core Skill Business Rules
+### Pitfall I1: Forecasting Skill Creates a Parallel Revenue Calculation Path
 
-**What goes wrong:** A new domain skill (Financial, Customer, etc.) hardcodes business rules that contradict the `control-erp-core` skill. For example, the Financial skill uses `TotalPrice` instead of `SubTotalPrice` for revenue, or the Customer skill uses `OrderCreatedDate` instead of `SaleDate`.
+**What goes wrong:** The forecasting skill builds its own "historical revenue by month" query as a foundation for projections, and this query produces slightly different monthly totals than the existing sales skill's "Monthly Revenue Trend" template (Template 2). Now there are two different sources of truth for monthly revenue.
 
-**Why it happens:** Each skill is written independently. Without explicit cross-referencing, a new skill author may re-derive business rules and get them wrong (exactly as the original v1.0 skill files did before validation).
+**Why it happens:** The forecasting skill needs historical monthly revenue as input. It is tempting to write a fresh query optimized for forecasting (e.g., including Type 2 estimates as "pipeline" or using a different date aggregation). But any deviation from the core revenue formula creates inconsistency.
 
 **Prevention:**
-- All new skills MUST declare dependency on `control-erp-core` and defer to it for: TransactionType mappings, price field selection, date field selection, standard filters, StatusID definitions
-- No new skill should redefine any rule that exists in `control-erp-core`
-- Validation standard: every query pattern in a new skill must produce results consistent with the core skill's validated $3,053,541.85 revenue benchmark
+- The forecasting skill MUST use the EXACT same monthly revenue query as the sales skill (Template 2)
+- If the forecast needs additional data (pipeline estimates, etc.), those should be SEPARATE from the base revenue series
+- Validation: the "actuals" portion of the forecast must match the sales skill's monthly trend output exactly, to the penny
+- Structure the forecast as: `actuals (from core revenue formula) + projection (computed from actuals)`
 
-**Severity:** CRITICAL -- This is how v1.0 started with wrong TransactionType mappings across multiple skill files.
+**Severity:** MEDIUM -- Silent inconsistency between skills. Detectable by comparing forecast actuals with sales skill actuals.
 
-**Domain/Phase:** All domains. Must be the first rule in every new skill file.
+**Phase:** Forecasting phase.
 
 ---
 
-### Pitfall I2: Natural Language Routing Ambiguity Between Skills
+### Pitfall I2: Division Filtering Breaks Existing Validated Queries
 
-**What goes wrong:** A user asks "what are our top customers" and the system cannot determine whether to use the Customer Intelligence skill (customer ranking by revenue), the Financial skill (AR by customer), or the Sales skill (sales by customer). Each produces slightly different results using different query approaches.
+**What goes wrong:** Adding division filtering to the revenue query introduces a regression: the undivided total no longer matches $3,052,952.52 because the COALESCE pattern or JOIN to DivisionData changes the query behavior.
 
-**Why it happens:** Multiple skills cover overlapping concepts. "Top customers" could mean highest revenue (sales skill), highest AR balance (financial skill), most orders (customer skill), or highest CLV (customer intelligence skill).
+**Why it happens:** The validated revenue formula is simple:
+```sql
+SELECT SUM(SubTotalPrice) FROM TransHeader
+WHERE TransactionType = 1 AND IsActive = 1 AND SaleDate IS NOT NULL AND YEAR(SaleDate) = 2025
+```
+Adding division filtering means either:
+- Adding `AND COALESCE(DivisionID, 10) = @DivisionID` (changes results if @DivisionID is not set)
+- Adding a JOIN to DivisionData (could exclude records with no matching DivisionData row)
+
+If the "all divisions" case is not carefully handled (e.g., omitting the WHERE clause when no division is selected, or using `@DivisionID = -1` to mean "all"), the base case regresses.
 
 **Prevention:**
-- Define clear domain boundaries in each skill's description
-- Revenue/sales questions -> core sales skill
-- Customer profiling/segmentation -> customer intelligence skill
-- AR/AP/payment questions -> financial skill
-- Inventory questions -> inventory skill
-- Production/artwork questions -> production skill
-- When ambiguous, prefer the more specific skill over the more general one
-- Test with ambiguous prompts during validation
+- Division filtering MUST be additive: when no division is specified, the query should be IDENTICAL to the existing validated formula
+- Implementation pattern: `AND (@DivisionID = -1 OR COALESCE(th.DivisionID, 10) = @DivisionID)` where -1 means "all divisions"
+- This matches the Cyrious wiki pattern: `?Division_DivisionID = -1 or ?Division_DivisionID = Ledger.DivisionID`
+- After adding division filtering, re-run the validation suite. The "all divisions" results must still match $3,052,952.52 for 2025.
+- DO NOT use a JOIN to DivisionData for filtering (it would exclude orphaned records). Use a WHERE clause.
 
-**Severity:** MEDIUM -- Wrong skill selection produces confusing (not wrong) answers.
+**Detection:** Re-run the 21-test validation suite after adding division filtering. Any regression is immediately visible.
 
-**Domain/Phase:** All domains. Define routing rules in the skill descriptions.
+**Severity:** MEDIUM -- Detectable through existing validation, but would block delivery until fixed.
+
+**Phase:** Division filtering framework phase. Must include regression testing.
 
 ---
 
-### Pitfall I3: Duplicated Query Patterns Across Skills
+### Pitfall I3: Dashboard NL Routing Conflicts with Existing Skill Routing
 
-**What goes wrong:** The Financial skill and the Customer Intelligence skill both implement "revenue by customer" queries but with slightly different logic (one uses TransHeader.SubTotalPrice, the other uses GL.Amount). They produce different numbers for the same question.
+**What goes wrong:** A user asks "show me this month's revenue" and the system routes to the dashboard skill (showing a React chart) when the user wanted a simple number from the sales skill. Or the user asks "morning report" and the system does not know whether to use the dashboard skill's text summary or the glossary's routing table.
+
+**Why it happens:** The glossary skill (control-erp-glossary) has 75 NL routing entries that map natural language to existing skills. Adding a dashboard skill creates routing ambiguity: "monthly revenue" could go to sales (number) or dashboard (chart). "Morning report" is a new concept that does not exist in current routing.
 
 **Prevention:**
-- Identify overlapping query patterns during skill design
-- Designate one skill as authoritative for each query type
-- Cross-reference: "For customer revenue analysis, see control-erp-core revenue formula"
-- Use the core skill's validated patterns as the single source of truth for revenue calculations
+- Define explicit routing triggers for the dashboard skill that do NOT overlap with existing skills:
+  - Dashboard triggers: "morning report", "executive summary", "dashboard", "visual report", "chart of...", "show me a chart"
+  - Sales triggers (unchanged): "monthly revenue", "sales this month", "revenue trend"
+- When ambiguous, default to the text-based skill (simpler, faster, validated). Only route to dashboard when the user explicitly requests a visual or dashboard.
+- Update the glossary routing table with dashboard entries
+- Test with the 25 existing routing test queries to ensure no regressions
 
-**Severity:** MEDIUM -- Conflicting answers destroy user trust.
+**Detection:** Run the 25 routing test queries after adding dashboard entries. Any routing change is a regression.
 
-**Domain/Phase:** All domains. Identify overlaps during skill design phase.
+**Severity:** LOW -- Annoyance (wrong output format), not wrong data. User can clarify.
+
+**Phase:** Dashboard phase. Must update glossary routing table.
 
 ---
 
@@ -544,40 +519,62 @@ Mistakes specific to adding new skills alongside existing v1.0 skills.
 
 | Phase Topic | Likely Pitfall | Mitigation | Severity |
 |-------------|---------------|------------|----------|
-| Financial: AR aging | C3 (DueDate semantic overloading) | Use SaleDate for AR aging, DueDate for AP aging | CRITICAL |
-| Financial: P&L | C1 (GL sign inversion) | Hardcode SUM(-Amount) for revenue, SUM(Amount) for expenses | HIGH |
-| Financial: GL queries | C2 (GL view vs Ledger table) | Always use GL view; Ledger only for production costs | HIGH |
-| Financial: Payments | M2 (Payment/Journal split table) | Document Payment.ID = Journal.ID pattern | MEDIUM |
-| Financial: GL accounts | m3 (ClassTypeID 8000 vs 8001) | Filter ClassTypeID = 8001 for leaf accounts | LOW |
-| Customer: Account names | C9 (CompanyName not AccountName) | Use Account.CompanyName consistently | MEDIUM |
-| Customer: Filtering | C10 (IsClient/IsProspect/IsActive flags) | Default to IsClient = 1 AND IsActive = 1 | HIGH |
-| Customer: Revenue | M3 (TransHeader polymorphism) | Always filter TransactionType = 1 | MEDIUM |
-| Inventory: Quantities | C4 (Quantity field confusion) | Use QuantityAvailable, not QuantityOnHand, for "available" | HIGH |
-| Inventory: Table choice | C5 (Inventory vs Part quantities) | Use Inventory table, not Part, for quantities | HIGH |
-| Inventory: Part types | M4 (PartType classification) | Filter to material parts for physical inventory | MEDIUM |
-| Production: TimeCard | C6 (ClassTypeID 20050 vs 20051) | Filter by ClassTypeID; never mix parent and detail | CRITICAL |
-| Production: TimeCard | C7 (Geography columns) | Never SELECT *; exclude LatLonStart/LatLonEnd | MEDIUM |
-| Production: Station time | C8 (Journal multi-purpose) | Always filter JournalActivityType = 45 for stations | HIGH |
-| Production: Artwork | C11 (Artwork status codes) | Use artwork-specific StatusIDs, not order StatusIDs | MEDIUM |
-| Production: Costs | M7 (PartUsageCard vs TransPart) | PartUsageCard = actual, TransPart = estimated | MEDIUM |
-| Reports: Metadata | M6 (Binary .rpt files) | Acknowledge inferred metadata; focus on guidance | LOW |
-| All domains: Integration | I1 (Contradicting core rules) | All skills defer to control-erp-core for business rules | CRITICAL |
-| All domains: Routing | I2 (NL routing ambiguity) | Define clear skill domain boundaries | MEDIUM |
-| All domains: Duplication | I3 (Duplicated query patterns) | Designate one authoritative skill per query type | MEDIUM |
+| Division framework | C1 (NULL DivisionID exclusion) | COALESCE(DivisionID, 10) everywhere | CRITICAL |
+| Division framework | C2 (Wrong DivisionID field) | Map which field per table per query type | HIGH |
+| Division framework | I2 (Regression of validated queries) | Re-run 21-test suite after every change | MEDIUM |
+| Division + Financial | C3 (DivisionID vs ProcessedDivisionID) | Use DivisionID, not ProcessedDivisionID, for financial | HIGH |
+| Division + Financial | C6 (GL vs TransHeader division disagreement) | Document expected variance, set tolerance | HIGH |
+| Division + Customers | M6 (Account vs TransHeader DivisionID) | Use TransHeader.DivisionID for order-level metrics | MEDIUM |
+| Division + Inventory | M2 (Inconsistent cross-skill filtering) | Division filter framework consumed by all skills | MEDIUM |
+| Forecasting | C4 (Insufficient data for reliable forecasts) | Moving averages only, show confidence context | HIGH |
+| Forecasting | M1 (Seasonal overfitting) | Min 36 months before claiming seasonal patterns | MEDIUM |
+| Forecasting | I1 (Parallel revenue calculation) | Use core revenue formula for actuals portion | MEDIUM |
+| Forecasting | M4 (Window function projection gap) | Generate future period rows via CTE, then apply trend | MEDIUM |
+| Dashboard (text + visual) | C5 (Inconsistent metrics vs skills) | Same SQL templates for dashboard and skills | CRITICAL |
+| Dashboard (visual) | M3 (Unsupported React libraries) | Only Recharts + Tailwind + Shadcn + Lucide | MEDIUM |
+| Dashboard (text + visual) | M7 (Divergent time ranges) | Single date computation shared by both outputs | MEDIUM |
+| Dashboard (routing) | I3 (NL routing conflicts) | Explicit dashboard triggers, no overlap with existing | LOW |
+| Payroll GL | M5 (Non-payroll entries in payroll query) | Map specific payroll GL NodeIDs | MEDIUM |
+| Trend detection | m4 (Customer concentration vs market trend) | Drill into top-customer contribution for any >10% change | LOW |
+
+---
+
+## Discovery Tasks Required Before Implementation
+
+These are unknowns that MUST be resolved by querying the live database before writing query templates. Failure to resolve these creates risk of building on wrong assumptions.
+
+| Question | Query | Why It Matters |
+|----------|-------|---------------|
+| What are the actual DivisionData IDs and names at FLS? | `SELECT ID, DivisionName, IsActive FROM DivisionData WHERE ID > 0` | We refer to "10" as default but have not confirmed the actual Apparel Division ID |
+| How many TransHeader records have NULL DivisionID? | `SELECT COUNT(*) FROM TransHeader WHERE DivisionID IS NULL AND TransactionType=1 AND IsActive=1` | Quantifies the C1 pitfall severity |
+| How many GL entries have NULL DivisionID? | `SELECT COUNT(*) FROM GL WHERE DivisionID IS NULL` | Quantifies the C1 pitfall for financial queries |
+| Do DivisionID and ProcessedDivisionID usually agree in Ledger? | `SELECT COUNT(*) FROM Ledger WHERE DivisionID != ProcessedDivisionID AND DivisionID IS NOT NULL AND ProcessedDivisionID IS NOT NULL` | Quantifies the C3 pitfall severity |
+| Which GL accounts are payroll-related? | `SELECT ID, AccountName FROM GLAccount WHERE ClassTypeID=8001 AND (AccountName LIKE '%payroll%' OR AccountName LIKE '%salary%' OR AccountName LIKE '%wage%' OR AccountName LIKE '%benefit%')` | Required for M5 (payroll GL mapping) |
+| Does Apparel Division have enough history for forecasting? | `SELECT YEAR(SaleDate) Y, MONTH(SaleDate) M, COUNT(*), SUM(SubTotalPrice) FROM TransHeader WHERE TransactionType=1 AND IsActive=1 AND SaleDate IS NOT NULL AND COALESCE(DivisionID,10) != 10 GROUP BY YEAR(SaleDate), MONTH(SaleDate) ORDER BY Y, M` | Determines if per-division forecasting is feasible (C4) |
+| How many months of total history exist? | `SELECT MIN(SaleDate), MAX(SaleDate) FROM TransHeader WHERE TransactionType=1 AND IsActive=1 AND SaleDate IS NOT NULL` | Determines forecast methodology ceiling |
 
 ---
 
 ## Sources
 
-- `/Users/cain/projects/control-db-map/skills/control-erp-core/control-erp-core-SKILL.md` -- Validated v1.0 business rules (HIGH confidence)
-- `/Users/cain/projects/control-db-map/skills/control-erp-financial/control-erp-financial-SKILL.md` -- Financial domain patterns (HIGH confidence)
-- `/Users/cain/projects/control-db-map/output/schemas/*.md` -- Database schema documentation (HIGH confidence)
-- `/Users/cain/projects/control-db-map/output/wiki/extracts/orders_accounting_knowledge.md` -- GL lifecycle, pricing mechanics (HIGH confidence)
-- `/Users/cain/projects/control-db-map/output/wiki/extracts/production_inventory_knowledge.md` -- Inventory formula, artwork statuses, stations (HIGH confidence)
-- `/Users/cain/projects/control-db-map/output/wiki/extracts/crm_payroll_system_knowledge.md` -- Account flags, CRM patterns (HIGH confidence)
-- `/Users/cain/projects/control-db-map/output/wiki/extracts/database_integration_knowledge.md` -- ClassTypeID mappings, Journal patterns (HIGH confidence)
-- `/Users/cain/projects/control-db-map/output/wiki/extracts/sql_queries_reference.md` -- GL integrity checks, AR/AP validation SQL (HIGH confidence)
-- `/Users/cain/projects/control-db-map/output/skill/references/relationships.md` -- FK and implicit relationships (HIGH confidence)
-- `/Users/cain/projects/control-db-map/validation/control-erp-validation-results.md` -- v1.0 validation findings (HIGH confidence)
-- `/Users/cain/projects/control-db-map/output/report_summary.md` -- Crystal Reports metadata limitations (MEDIUM confidence, inferred metadata)
-- `/Users/cain/projects/control-db-map/CLAUDE.md` -- Project instructions, known gotchas (HIGH confidence)
+- `/Users/cain/projects/control-db-map/output/schemas/TransHeader.md` -- TransHeader schema with DivisionID, ProductionDivisionID, ShipFromDivisionID fields (HIGH confidence)
+- `/Users/cain/projects/control-db-map/output/schemas/Ledger.md` -- Ledger schema with DivisionID and ProcessedDivisionID fields (HIGH confidence)
+- `/Users/cain/projects/control-db-map/output/schemas/DivisionData.md` -- DivisionData table: 3 rows, nullable columns documented (HIGH confidence)
+- `/Users/cain/projects/control-db-map/output/schemas/Account.md` -- Account.DivisionID FK to DivisionData (HIGH confidence)
+- `/Users/cain/projects/control-db-map/output/schemas/Warehouse.md` -- Warehouse.DivisionID NOT NULL (HIGH confidence)
+- `/Users/cain/projects/control-db-map/output/wiki/extracts/sql_queries_reference.md` -- 40+ wiki SQL scripts using COALESCE(DivisionID, 10) pattern (HIGH confidence)
+- `/Users/cain/projects/control-db-map/output/wiki/extracts/howto_troubleshooting_knowledge.md` -- "Always use COALESCE(DivisionID, 10)" rule, common gotchas (HIGH confidence)
+- `/Users/cain/projects/control-db-map/output/wiki/support/external_exception_when_printing.md` -- NULL DivisionID in Ledger documented as known issue (HIGH confidence)
+- `/Users/cain/projects/control-db-map/output/wiki/control/control_release_notes_6.1.2107.0701.md` -- CCON-5479 ProcessedDivisionID bug documented (HIGH confidence)
+- `/Users/cain/projects/control-db-map/skills/control-erp-core/control-erp-core-SKILL.md` -- Validated revenue formula, business rules (HIGH confidence)
+- `/Users/cain/projects/control-db-map/skills/control-erp-financial/control-erp-financial-SKILL.md` -- GL sign conventions, Ledger field reference (HIGH confidence)
+- `/Users/cain/projects/control-db-map/skills/control-erp-sales/control-erp-sales-SKILL.md` -- Monthly revenue trend template (HIGH confidence)
+- `/Users/cain/projects/control-db-map/skills/control-erp-glossary/control-erp-glossary-SKILL.md` -- NL routing table, division glossary entry (HIGH confidence)
+- `/Users/cain/projects/control-db-map/output/skill/references/field_values.md` -- Warehouse IDs by division, DivisionID reference (HIGH confidence)
+- `/Users/cain/projects/control-db-map/.planning/PROJECT.md` -- v1.2 requirements, project context (HIGH confidence)
+- [Forecasting with SQL - SQLServerCentral](https://www.sqlservercentral.com/articles/forecasting-with-sql) -- SQL Server forecasting patterns (MEDIUM confidence, community source)
+- [Time Series Forecasting in SQL with Moving Averages - Towards Data Science](https://towardsdatascience.com/how-to-conduct-time-series-forecasting-in-sql-with-moving-averages-fd5e6f2a456/) -- Window function patterns for forecasting (MEDIUM confidence, community source)
+- [Silota: Ratio to Moving Average Seasonal Index](http://www.silota.com/docs/recipes/sql-ratio-to-moving-average-seasonal-index.html) -- Seasonal decomposition in SQL (MEDIUM confidence, tutorial)
+- [Claude Artifacts limitations - Medium](https://medium.com/@intranetfactory/claude-artifacts-a-game-changer-held-back-by-frustrating-limits-6adcacdd95a7) -- React artifact sandbox constraints (MEDIUM confidence, Jan 2025)
+- [Common Data Analysis Mistakes - NetSuite](https://www.netsuite.com/portal/resource/articles/data-warehouse/data-mistakes.shtml) -- General analytics pitfalls (MEDIUM confidence, vendor source)
+- [Biggest Forecasting Mistakes 2026 - Mosaic](https://www.mosaicapp.com/post/the-biggest-forecasting-mistakes-leaders-still-make-in-2026) -- Forecasting methodology pitfalls (MEDIUM confidence, vendor source)
