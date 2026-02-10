@@ -415,4 +415,285 @@ When executing artwork pipeline queries:
 6. **Revision definition:** `ArtworkGroupStatusHistory WHERE FromStatusID=3 AND ToStatusID=1`
 7. **Stuck threshold:** 7 days = 3x average turnaround; adjustable per user request
 
-<!-- Plan 02 adds: Station workload (PROD-02), station dwell time analysis (PROD-03), and NL routing table -->
+---
+
+## SECTION 5: STATION HIERARCHY REFERENCE
+
+### Station Classification Model
+
+FLS uses a dual-level station model where stations can track:
+- **Order-level**: High-level milestones (flags: `ShowForWIP = 1` or `ShowForBuilt = 1` or `ShowForSale = 1` or `ShowForPendingEstimates = 1`)
+- **Line-item-level**: Granular production routing (flags: `ShowForLineItem = 1` or `ShowForLineWIP = 1` or `ShowForLineBuilt = 1` or `ShowForLineSale = 1`)
+- **Dual-level (both)**: Station tracks BOTH orders and line items independently (e.g., 1-Approved, 0-Design-Proof, 6-Shipping)
+
+**Classification Logic:**
+```
+Order-level    = ShowForWIP OR ShowForBuilt OR ShowForSale OR ShowForPendingEstimates
+Line-item-level = ShowForLineItem OR ShowForLineWIP OR ShowForLineBuilt OR ShowForLineSale
+Dual-level     = (Order-level flags) AND (Line-item-level flags)
+```
+
+---
+
+### FLS Production Stage Hierarchy (Numbered-Stage System)
+
+FLS organizes production into numbered stages 0-6 with substations:
+
+| Stage | Station Name | ID | Order-Level | LI-Level | TimeClock | Notes |
+|-------|-------------|-----|-------------|----------|-----------|-------|
+| **0** | **0-Design** (dept) | 1016 | -- | -- | -- | Department parent |
+| 0 | 0-Design-Preflight | 10004 | WIP, Est | -- | -- | |
+| 0 | 0-Design-Need Art | 10002 | WIP, Est | -- | -- | |
+| 0 | 0-Design-Request Art | 10003 | WIP, Est | -- | -- | |
+| 0 | 0-Design-Proof | 1020 | WIP, Est | LI (all) | Yes | **Dual-level** |
+| 0 | 0-Design-Wait for Art | 1012 | WIP, Est | LI (all) | -- | **Dual-level** |
+| 0 | 0-Design-Complete | 1069 | WIP | LI (all) | -- | **Dual-level** |
+| **1** | **1-Approved** | 1024 | WIP, Est | LI (all) | -- | **Dual-level** |
+| **1.1** | **1.1 Pre-Production** | 10008 | -- | LI (all) | Yes | LI only |
+| **2** | **2-Production** (dept) | 1025 | WIP | -- | -- | Order-level only |
+| 2 | 2-Production-Digital | 1027 | -- | LI (all) | Yes | LI only |
+| 2 | 2-Production-West Side | 1073 | -- | LI (all) | Yes | LI only |
+| 2 | 2-Production-SP | 1028 | -- | LI (all) | Yes | LI only |
+| 2 | 2-Production-DTG | 10001 | -- | LI (all) | Yes | LI only |
+| 2 | 2-Production-Garment | 1030 | -- | LI (all) | Yes | LI only |
+| 2 | 2-Production-Embroidery | 1031 | -- | LI (all) | Yes | LI only |
+| 2 | 2-Production-Contract | 1029 | WIP | LI (all) | -- | **Dual-level** |
+| 2 | 2-Production-Press Ons | 1071 | -- | LI (all) | Yes | LI only |
+| **2.1** | **2.1-Print In Progress** | 10007 | -- | LI (all) | Yes | LI only |
+| **3** | **3-Transfer** | 1068 | -- | LI (all) | Yes | LI only |
+| **4** | **4-Cutting** | 1043 | -- | LI (all) | Yes | LI only |
+| **5** | **5-Finishing** | 1032 | -- | LI (all) | Yes | LI only |
+| **6** | **6-Shipping** | 1033 | WIP | LI (all) | Yes | **Dual-level** |
+
+**TimeClock column:** Indicates `ShowOnTimeClock = 1` (employee clock stations for time tracking)
+
+---
+
+### Administrative Stations (Non-Production)
+
+**Hold Stations (order-level):**
+- On-Hold (1014)
+- On-Hold-Artwork (1034)
+- On-Hold-Payment (1035)
+- Out For Approval (1023)
+
+**Post-Production Stations:**
+- Waiting For Pick-up (1049) -- Sale, LI
+- Waiting For Shipment (1050) -- Sale, LI
+- Picked-Up (1036) -- Sale, LI, MarkLIComplete=true
+- Shipped (1037) -- Sale
+- Delivered (1038) -- Sale
+- Built (1042) -- LI
+
+**Other Stations:**
+- Estimate tracking stations (Estimate Sent, Converted, etc.)
+- Follow-up stations (Follow-up-24hr, Follow-up-72, etc.)
+- Time/Payroll stations (Time, Time Off, etc.) -- NOT production-related
+- PO stations (Requested, Ordered, Received, etc.) -- Purchase order lifecycle
+
+---
+
+### Station Discovery Query
+
+```sql
+-- Active production-relevant stations (excludes Time/PO stations)
+-- CRITICAL: Never use SELECT * on Station (geography columns crash)
+SELECT
+    s.ID,
+    s.StationName,
+    s.SortIndex,
+    s.ShowForWIP,
+    s.ShowForLineItem,
+    s.ShowForLineWIP,
+    s.ShowOnTimeClock,
+    s.DepartmentID,
+    s.MarkLIComplete,
+    CASE
+        WHEN (s.ShowForWIP = 1 OR s.ShowForBuilt = 1 OR s.ShowForSale = 1)
+             AND (s.ShowForLineItem = 1 OR s.ShowForLineWIP = 1)
+        THEN 'Dual (order + line item)'
+        WHEN s.ShowForWIP = 1 OR s.ShowForBuilt = 1 OR s.ShowForSale = 1
+        THEN 'Order-level'
+        WHEN s.ShowForLineItem = 1 OR s.ShowForLineWIP = 1
+        THEN 'Line-item-level'
+        ELSE 'Other'
+    END AS StationLevel
+FROM Station s
+WHERE s.IsActive = 1
+    AND s.ID NOT IN (200, 201, 202, 1001, 1002, 1004, 1005, 1006, 1007, 1008)  -- Exclude Time/PTO stations
+    AND s.ID NOT BETWEEN 100 AND 110  -- Exclude PO lifecycle stations
+ORDER BY s.SortIndex
+```
+
+**CRITICAL:** NEVER use `SELECT *` on Station. Geography columns cause query failures. Always explicitly list columns as shown above.
+
+---
+
+## SECTION 6: STATION WORKLOAD QUERIES (PROD-02)
+
+### 6a. Order-Level WIP by Station (Stage Summary)
+
+**When to use:** User asks "what's in production", "WIP by station", "show me the pipeline"
+
+```sql
+SELECT
+    s.StationName,
+    s.SortIndex,
+    COUNT(*) AS OrderCount,
+    SUM(th.SubTotalPrice) AS TotalRevenue,
+    MIN(th.DueDate) AS EarliestDueDate,
+    MAX(DATEDIFF(day, th.OrderCreatedDate, GETDATE())) AS OldestOrderDays
+FROM TransHeader th
+JOIN Station s ON th.StationID = s.ID
+WHERE th.TransactionType = 1
+  AND th.StatusID IN (1, 2)
+  AND th.IsActive = 1
+GROUP BY s.StationName, s.SortIndex
+ORDER BY s.SortIndex
+```
+
+**Formatting guidance:**
+- Present as a pipeline view sorted by stage (SortIndex)
+- For each station: "**[StationName]**: [OrderCount] orders ($[TotalRevenue]) -- earliest due: [EarliestDueDate]"
+- Summary line: "**Total WIP**: [sum] orders across [station count] stations"
+- Reference baseline: FLS current WIP is ~67 orders (2-Production: 40, 0-Design-Proof: 14, Out For Approval: 6)
+
+---
+
+### 6b. Line-Item-Level WIP by Station
+
+**When to use:** User asks "line items in production", "line item WIP", "what's at each station" (detailed view)
+
+```sql
+SELECT
+    s.StationName,
+    s.SortIndex,
+    COUNT(*) AS LineItemCount,
+    SUM(td.MeAndSonsSubTotalPrice) AS TotalValue,
+    COUNT(DISTINCT td.TransHeaderID) AS OrdersRepresented
+FROM TransDetail td
+JOIN Station s ON td.StationID = s.ID
+JOIN TransHeader th ON td.TransHeaderID = th.ID
+WHERE th.TransactionType = 1
+  AND th.StatusID IN (1, 2)
+  AND th.IsActive = 1
+  AND td.IsActive = 1
+  AND td.ParentID = th.ID  -- Top-level line items only (avoids sub-items)
+GROUP BY s.StationName, s.SortIndex
+ORDER BY s.SortIndex
+```
+
+**Note:** `ParentID = th.ID` filters to top-level line items only (children of the header, not sub-line-items). This prevents double-counting from assembly/sub-item structures.
+
+**Reference baseline:** FLS current LI WIP is ~116 items (Waiting For Shipment: 42, 0-Design-Proof: 37, 2-Production-Embroidery: 12)
+
+---
+
+### 6c. Specific Station Detail (Order List for a Station)
+
+**When to use:** User asks "what's at [station]", "show me [station] queue", "[station] detail"
+
+**For ORDER-LEVEL detail:**
+```sql
+-- Order-level detail for a specific station
+SELECT
+    th.OrderNumber,
+    a.CompanyName AS Customer,
+    th.SubTotalPrice AS OrderValue,
+    th.DueDate,
+    DATEDIFF(day, th.OrderCreatedDate, GETDATE()) AS OrderAgeDays,
+    th.StatusID
+FROM TransHeader th
+JOIN Station s ON th.StationID = s.ID
+JOIN Account a ON th.AccountID = a.ID
+WHERE th.TransactionType = 1
+  AND th.StatusID IN (1, 2)
+  AND th.IsActive = 1
+  AND s.StationName LIKE '%station_name%'
+ORDER BY th.DueDate ASC
+```
+
+**For LINE-ITEM detail:**
+```sql
+-- Line-item detail for a specific station
+SELECT
+    th.OrderNumber,
+    a.CompanyName AS Customer,
+    td.Description AS LineItem,
+    td.Quantity,
+    td.MeAndSonsSubTotalPrice AS LineValue,
+    s.StationName
+FROM TransDetail td
+JOIN Station s ON td.StationID = s.ID
+JOIN TransHeader th ON td.TransHeaderID = th.ID
+JOIN Account a ON th.AccountID = a.ID
+WHERE th.TransactionType = 1
+  AND th.StatusID IN (1, 2)
+  AND th.IsActive = 1
+  AND td.IsActive = 1
+  AND s.StationName LIKE '%station_name%'
+ORDER BY th.OrderNumber, td.SortOrder
+```
+
+**Guidance:** When the user names a station:
+1. Search by LIKE pattern against `StationName`
+2. For **dual-level stations** (e.g., 1-Approved, 6-Shipping): Run BOTH queries and present both views
+3. For **line-item-only stations** (e.g., 2-Production-Embroidery): Only run the line-item query
+4. For **order-level-only stations** (e.g., 2-Production dept): Only run the order query
+
+---
+
+### 6d. Stage-Level Summary (Combined Order + Line-Item View)
+
+**When to use:** User asks "pipeline overview", "stage summary", "production stages", "high-level view"
+
+```sql
+-- Parse stage number from station name prefix for grouped summary
+SELECT
+    CASE
+        WHEN s.StationName LIKE '0-%' THEN '0-Design'
+        WHEN s.StationName LIKE '1-%' OR s.StationName = '1-Approved' THEN '1-Approved'
+        WHEN s.StationName LIKE '1.1%' THEN '1.1-Pre-Production'
+        WHEN s.StationName LIKE '2-%' THEN '2-Production'
+        WHEN s.StationName LIKE '2.1%' THEN '2.1-Print In Progress'
+        WHEN s.StationName LIKE '3-%' THEN '3-Transfer'
+        WHEN s.StationName LIKE '4-%' THEN '4-Cutting'
+        WHEN s.StationName LIKE '5-%' THEN '5-Finishing'
+        WHEN s.StationName LIKE '6-%' THEN '6-Shipping'
+        ELSE 'Other (' + s.StationName + ')'
+    END AS Stage,
+    COUNT(DISTINCT th.ID) AS WIPOrders,
+    SUM(th.SubTotalPrice) AS TotalOrderValue
+FROM TransHeader th
+JOIN Station s ON th.StationID = s.ID
+WHERE th.TransactionType = 1
+  AND th.StatusID IN (1, 2)
+  AND th.IsActive = 1
+GROUP BY
+    CASE
+        WHEN s.StationName LIKE '0-%' THEN '0-Design'
+        WHEN s.StationName LIKE '1-%' OR s.StationName = '1-Approved' THEN '1-Approved'
+        WHEN s.StationName LIKE '1.1%' THEN '1.1-Pre-Production'
+        WHEN s.StationName LIKE '2-%' THEN '2-Production'
+        WHEN s.StationName LIKE '2.1%' THEN '2.1-Print In Progress'
+        WHEN s.StationName LIKE '3-%' THEN '3-Transfer'
+        WHEN s.StationName LIKE '4-%' THEN '4-Cutting'
+        WHEN s.StationName LIKE '5-%' THEN '5-Finishing'
+        WHEN s.StationName LIKE '6-%' THEN '6-Shipping'
+        ELSE 'Other (' + s.StationName + ')'
+    END
+ORDER BY MIN(s.SortIndex)
+```
+
+**Note:** This gives a high-level pipeline view. The CASE statement groups substations into their parent stage. For detailed substation breakdown, use queries 6a/6b.
+
+---
+
+## CRITICAL REMINDERS FOR STATION WORKLOAD QUERIES
+
+1. **Always filter `TransactionType = 1` AND `StatusID IN (1, 2)`** for WIP
+2. **Always use `ParentID = th.ID`** for top-level line items (prevents double-counting)
+3. **Never `SELECT *` from Station** (geography columns crash queries)
+4. **For dual-level stations:** Present both order and line-item views
+5. **For line-item-only stations:** Only present line-item view
+6. **For order-level-only stations:** Only present order view
