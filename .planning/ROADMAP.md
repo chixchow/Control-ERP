@@ -154,6 +154,11 @@ Plans:
 - NL routing ambiguity: "top customers" could route to sales, financial, or customers. Clear domain boundaries must be defined.
 
 **Research flag:** Standard patterns. Static catalog from report_summary.md, straightforward routing table extension.
+**Plans**: 2 plans
+
+Plans:
+- [ ] 13-01-PLAN.md -- Crystal Reports catalog (36 reports with coverage status) + gap log file
+- [ ] 13-02-PLAN.md -- Expand NL routing to all 6 domain skills + validate with 25 test queries
 
 ## Progress
 
@@ -166,7 +171,7 @@ Phases execute in numeric order with parallelization: 9+10 (parallel) -> 11 -> 1
 | 10. Customer Intelligence | v1.1 | 2/2 | Complete | 2026-02-09 |
 | 11. Inventory Management | v1.1 | 2/2 | Complete | 2026-02-09 |
 | 12. Production Workflow | v1.1 | 2/2 | Complete | 2026-02-10 |
-| 13. Glossary Integration | v1.1 | 0/TBD | Not started | - |
+| 13. Glossary Integration | v1.1 | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-09*
