@@ -697,3 +697,399 @@ ORDER BY MIN(s.SortIndex)
 4. **For dual-level stations:** Present both order and line-item views
 5. **For line-item-only stations:** Only present line-item view
 6. **For order-level-only stations:** Only present order view
+
+---
+
+## SECTION 7: STATION DWELL TIME ANALYSIS (PROD-03)
+
+### Dwell Time Methodology
+
+**How dwell time is calculated:**
+- Station dwell time = time between consecutive station transitions in the Journal table
+- Journal records station changes with `JournalActivityType = 45`
+- `Journal.StationID` = the station moved TO (new station)
+- `Journal.LinkID` = TransDetail.ID for line-item-level (NULL for order-level)
+- `Journal.EndDateTime` is ALWAYS NULL (point-in-time events, not spans)
+- Dwell calculation uses LEAD() window function to find delta between consecutive `StartDateTime` values
+- For items still at current station (no next transition): use `COALESCE(next_transition, GETDATE())`
+
+**Performance considerations:**
+- Journal has 1.06M station change records total
+- **ALWAYS filter by date range** for performance
+- Default: 3-month rolling window
+- Never query Journal without date constraints
+
+**Business goal:** 1-business-day turnaround per station
+
+---
+
+### 7a. Average Dwell Time by Station (Order-Level, Last 3 Months)
+
+**When to use:** User asks "how long at [station]", "station dwell time", "average time per stage"
+
+```sql
+WITH OrderTransitions AS (
+    SELECT
+        j.TransactionID,
+        j.StationID,
+        s.StationName,
+        s.SortIndex,
+        j.StartDateTime AS ArrivedAt,
+        LEAD(j.StartDateTime) OVER (
+            PARTITION BY j.TransactionID
+            ORDER BY j.StartDateTime
+        ) AS LeftAt
+    FROM Journal j
+    JOIN Station s ON j.StationID = s.ID
+    WHERE j.JournalActivityType = 45
+      AND j.LinkID IS NULL  -- order-level only
+      AND j.StartDateTime > DATEADD(month, -3, GETDATE())
+)
+SELECT
+    StationName,
+    COUNT(*) AS TransitionCount,
+    AVG(DATEDIFF(minute, ArrivedAt, LeftAt)) / 60.0 AS AvgDwellHours,
+    AVG(DATEDIFF(minute, ArrivedAt, LeftAt)) / 1440.0 AS AvgDwellDays,
+    MAX(DATEDIFF(minute, ArrivedAt, LeftAt)) / 1440.0 AS MaxDwellDays
+FROM OrderTransitions
+WHERE LeftAt IS NOT NULL  -- exclude items still at the station
+GROUP BY StationName, SortIndex
+HAVING COUNT(*) > 10  -- minimum sample size
+ORDER BY SortIndex
+```
+
+**Formatting guidance:**
+- Present as a table: "**[StationName]**: avg [AvgDwellHours]h (max [MaxDwellDays]d) -- [TransitionCount] transitions"
+- Flag stations where `AvgDwellDays > 1` as exceeding the 1-business-day goal
+- Note: Averages can be skewed by long-running orders; MAX shows outliers
+- Reference baseline: 2-Production has the longest dwell (days to weeks), 6-Shipping is fast (~1-4 hours)
+
+---
+
+### 7b. Average Dwell Time by Station (Line-Item-Level, Last 3 Months)
+
+**When to use:** User asks "line item dwell time", "line item processing time", "how long do line items take"
+
+```sql
+WITH LITransitions AS (
+    SELECT
+        j.TransactionID,
+        j.LinkID,
+        j.StationID,
+        s.StationName,
+        s.SortIndex,
+        j.StartDateTime AS ArrivedAt,
+        LEAD(j.StartDateTime) OVER (
+            PARTITION BY j.TransactionID, j.LinkID
+            ORDER BY j.StartDateTime
+        ) AS LeftAt
+    FROM Journal j
+    JOIN Station s ON j.StationID = s.ID
+    WHERE j.JournalActivityType = 45
+      AND j.LinkID IS NOT NULL  -- line-item-level only
+      AND j.StartDateTime > DATEADD(month, -3, GETDATE())
+)
+SELECT
+    StationName,
+    COUNT(*) AS TransitionCount,
+    AVG(DATEDIFF(minute, ArrivedAt, LeftAt)) / 60.0 AS AvgDwellHours,
+    AVG(DATEDIFF(minute, ArrivedAt, LeftAt)) / 1440.0 AS AvgDwellDays,
+    MAX(DATEDIFF(minute, ArrivedAt, LeftAt)) / 1440.0 AS MaxDwellDays
+FROM LITransitions
+WHERE LeftAt IS NOT NULL
+GROUP BY StationName, SortIndex
+HAVING COUNT(*) > 10
+ORDER BY SortIndex
+```
+
+**Note:** This tracks line-item-specific dwell (e.g., how long a single line item sits at 2-Production-Embroidery). Uses `PARTITION BY TransactionID, LinkID` to track each line item's journey independently.
+
+---
+
+### 7c. Current WIP Dwell Time (How Long Items Have Been at Current Station)
+
+**When to use:** User asks "how long have current orders been sitting", "current WIP age", "which orders are stuck"
+
+**Order-level current station dwell:**
+```sql
+-- Order-level: current station dwell for WIP orders
+SELECT
+    th.OrderNumber,
+    a.CompanyName AS Customer,
+    s.StationName AS CurrentStation,
+    th.SubTotalPrice AS OrderValue,
+    j_last.StartDateTime AS ArrivedAtStation,
+    DATEDIFF(hour, j_last.StartDateTime, GETDATE()) AS HoursAtStation,
+    DATEDIFF(hour, j_last.StartDateTime, GETDATE()) / 24.0 AS DaysAtStation,
+    th.DueDate
+FROM TransHeader th
+JOIN Station s ON th.StationID = s.ID
+JOIN Account a ON th.AccountID = a.ID
+CROSS APPLY (
+    SELECT TOP 1 j.StartDateTime
+    FROM Journal j
+    WHERE j.JournalActivityType = 45
+      AND j.TransactionID = th.ID
+      AND j.LinkID IS NULL
+    ORDER BY j.StartDateTime DESC
+) j_last
+WHERE th.TransactionType = 1
+  AND th.StatusID IN (1, 2)
+  AND th.IsActive = 1
+ORDER BY DATEDIFF(hour, j_last.StartDateTime, GETDATE()) DESC
+```
+
+**Formatting guidance:**
+- Show longest-sitting orders first
+- Flag items exceeding 1 business day (24 hours) as "**OVER GOAL**"
+- Flag items exceeding 7 days as "**CRITICAL**"
+- Include DueDate context: if DueDate is past, flag as "**PAST DUE**"
+
+**Example output:**
+```
+Order 133526 (ABC Corp) at 2-Production: 747h (31 days) **CRITICAL** -- Due: 2026-01-15 **PAST DUE**
+Order 133769 (XYZ Inc) at 2-Production: 270h (11 days) **CRITICAL** -- Due: 2026-02-20
+Order 133816 (DEF LLC) at 0-Design-Proof: 150h (6 days) **CRITICAL** -- Due: 2026-02-12
+```
+
+---
+
+### 7d. Dwell Time by Order Size (Identify Where Large vs Small Orders Slow Down)
+
+**When to use:** User asks "do large orders take longer", "dwell by order size", "where do big orders get stuck"
+
+```sql
+WITH OrderTransitions AS (
+    SELECT
+        j.TransactionID,
+        j.StationID,
+        s.StationName,
+        s.SortIndex,
+        j.StartDateTime AS ArrivedAt,
+        LEAD(j.StartDateTime) OVER (
+            PARTITION BY j.TransactionID
+            ORDER BY j.StartDateTime
+        ) AS LeftAt,
+        th.SubTotalPrice
+    FROM Journal j
+    JOIN Station s ON j.StationID = s.ID
+    JOIN TransHeader th ON j.TransactionID = th.ID
+    WHERE j.JournalActivityType = 45
+      AND j.LinkID IS NULL
+      AND j.StartDateTime > DATEADD(month, -3, GETDATE())
+      AND th.TransactionType = 1
+)
+SELECT
+    StationName,
+    CASE
+        WHEN SubTotalPrice < 500 THEN 'Small (<$500)'
+        WHEN SubTotalPrice < 2000 THEN 'Medium ($500-$2K)'
+        WHEN SubTotalPrice < 5000 THEN 'Large ($2K-$5K)'
+        ELSE 'XL ($5K+)'
+    END AS OrderSize,
+    COUNT(*) AS Transitions,
+    AVG(DATEDIFF(minute, ArrivedAt, LeftAt)) / 60.0 AS AvgDwellHours,
+    AVG(DATEDIFF(minute, ArrivedAt, LeftAt)) / 1440.0 AS AvgDwellDays
+FROM OrderTransitions
+WHERE LeftAt IS NOT NULL
+GROUP BY StationName, SortIndex,
+    CASE
+        WHEN SubTotalPrice < 500 THEN 'Small (<$500)'
+        WHEN SubTotalPrice < 2000 THEN 'Medium ($500-$2K)'
+        WHEN SubTotalPrice < 5000 THEN 'Large ($2K-$5K)'
+        ELSE 'XL ($5K+)'
+    END
+HAVING COUNT(*) > 5
+ORDER BY SortIndex,
+    CASE
+        WHEN SubTotalPrice < 500 THEN 1
+        WHEN SubTotalPrice < 2000 THEN 2
+        WHEN SubTotalPrice < 5000 THEN 3
+        ELSE 4
+    END
+```
+
+**Note:** This answers the user's key question: "do large orders take longer at certain stations?" Size buckets can be adjusted based on FLS order distribution. The `HAVING > 5` filter ensures minimum sample sizes.
+
+**Example insight:** "Large orders ($2K-$5K) spend 3x longer at 2-Production than small orders (<$500), indicating capacity constraints for complex work."
+
+---
+
+### 7e. Bottleneck Detection (Combines WIP Count + Dwell Time)
+
+**When to use:** User asks "which stations are backed up", "bottlenecks", "where are we stuck", "production issues"
+
+This is the comprehensive bottleneck query -- combines count AND dwell:
+
+```sql
+WITH CurrentDwell AS (
+    SELECT
+        th.ID AS TransHeaderID,
+        th.StationID,
+        DATEDIFF(hour,
+            (SELECT TOP 1 j.StartDateTime FROM Journal j
+             WHERE j.JournalActivityType = 45 AND j.TransactionID = th.ID AND j.LinkID IS NULL
+             ORDER BY j.StartDateTime DESC),
+            GETDATE()
+        ) AS HoursAtStation
+    FROM TransHeader th
+    WHERE th.TransactionType = 1
+      AND th.StatusID IN (1, 2)
+      AND th.IsActive = 1
+),
+BottleneckAnalysis AS (
+    SELECT
+        s.StationName,
+        s.SortIndex,
+        COUNT(*) AS WIPCount,
+        SUM(th.SubTotalPrice) AS TotalValue,
+        AVG(cd.HoursAtStation) AS AvgHoursAtStation,
+        AVG(cd.HoursAtStation) / 24.0 AS AvgDaysAtStation,
+        MAX(cd.HoursAtStation) / 24.0 AS MaxDaysAtStation,
+        CASE
+            WHEN COUNT(*) >= 10 AND AVG(cd.HoursAtStation) > 48 THEN 'CRITICAL BOTTLENECK'
+            WHEN COUNT(*) >= 5 AND AVG(cd.HoursAtStation) > 24 THEN 'BOTTLENECK'
+            WHEN AVG(cd.HoursAtStation) > 48 THEN 'SLOW (low volume)'
+            ELSE 'OK'
+        END AS BottleneckStatus
+    FROM TransHeader th
+    JOIN Station s ON th.StationID = s.ID
+    JOIN CurrentDwell cd ON cd.TransHeaderID = th.ID
+    WHERE th.TransactionType = 1
+      AND th.StatusID IN (1, 2)
+      AND th.IsActive = 1
+    GROUP BY s.StationName, s.SortIndex
+)
+SELECT *
+FROM BottleneckAnalysis
+ORDER BY
+    CASE BottleneckStatus
+        WHEN 'CRITICAL BOTTLENECK' THEN 1
+        WHEN 'BOTTLENECK' THEN 2
+        WHEN 'SLOW (low volume)' THEN 3
+        ELSE 4
+    END,
+    WIPCount DESC
+```
+
+**Bottleneck definition:**
+- **CRITICAL BOTTLENECK**: >= 10 orders AND avg dwell > 48 hours (2 days)
+- **BOTTLENECK**: >= 5 orders AND avg dwell > 24 hours (1 day)
+- **SLOW (low volume)**: avg dwell > 48 hours but low order count
+- **OK**: Meeting or close to 1-business-day goal
+
+**Note:** A station with 2 orders sitting for a week is "slow" not "bottlenecked". A station with 40 orders sitting for 3 days is a bottleneck. Thresholds can be adjusted based on user preference.
+
+---
+
+## CRITICAL REMINDERS FOR DWELL TIME QUERIES
+
+1. **Always use LEAD() with `PARTITION BY TransactionID, ISNULL(LinkID, 0)`** for dwell calculation
+2. **Always filter `JournalActivityType = 45` AND date range** for Journal queries
+3. **Use `COALESCE(next_transition, GETDATE())`** for current WIP dwell (items still at station)
+4. **Never `SELECT *` from Station** (geography columns crash queries)
+5. **Bottleneck = count + dwell combined**, not just one metric
+6. **Default to 3-month rolling window** for historical dwell analysis
+
+---
+
+## SECTION 8: NATURAL LANGUAGE INTERPRETATION
+
+### NL Routing Table
+
+Map user phrases to specific query sections:
+
+| User Says | Route To | Section |
+|-----------|----------|---------|
+| "show me the artwork pipeline" / "artwork status" / "proof status" | Artwork Pipeline Summary | 4a |
+| "pending approvals" / "what artwork needs approval" | Artwork Drill-Down (StatusID=3) | 4b |
+| "artwork in design" / "what's being designed" | Artwork Drill-Down (StatusID=1) | 4b |
+| "rejected artwork" / "what was rejected" | Artwork Drill-Down (StatusID=10) | 4b |
+| "stuck artwork" / "overdue artwork" / "artwork taking too long" | Stuck Artwork Detection | 4c |
+| "artwork turnaround time" / "how long does approval take" | Artwork Turnaround | 4d |
+| "turnaround trend" / "are we getting faster" | Turnaround Trend | 4e |
+| "revision rate" / "how often do proofs get rejected" | Revision Rate Analysis | 4f |
+| "what is [designer] working on" / "artwork by designer" | Artwork by Designer | 4g |
+| "artwork for order [number]" / "proof status for [order]" | Artwork with Line Items | 4h |
+| "what's in production" / "WIP" / "work in progress" | Order-Level WIP by Station | 6a |
+| "line items in production" / "line item WIP" | LI-Level WIP by Station | 6b |
+| "what's at [station]" / "[station] queue" / "show me [station]" | Station Detail | 6c |
+| "pipeline overview" / "stage summary" / "production stages" | Stage-Level Summary | 6d |
+| "which stations are backed up" / "bottlenecks" / "where are we stuck" | Bottleneck Detection | 7e |
+| "how long at [station]" / "dwell time" / "station dwell" | Avg Dwell Time (order) | 7a |
+| "line item dwell time" / "line item processing time" | Avg Dwell Time (LI) | 7b |
+| "how long have current orders been sitting" / "current WIP age" | Current WIP Dwell | 7c |
+| "do large orders take longer" / "dwell by order size" | Dwell by Order Size | 7d |
+| "station list" / "what stations do we have" | Station Discovery | 5 |
+| "what's the workload at [station]" | Station Detail (6c) + Dwell (7a/7b) combined | 6c+7a |
+
+---
+
+### Cross-Skill Routing
+
+When user asks about topics outside this skill, redirect:
+
+- "order detail for [number]" / "order status" → Redirect to **control-erp-sales** or **control-erp-core** (order lookup)
+- "customer artwork history" / "all artwork for [customer]" → Use 4b with `AccountID` filter added
+- "inventory for [part]" / "stock levels" → Redirect to **control-erp-inventory**
+- "time card" / "hours worked" / "employee time" → **NOT in this skill**; FLS does not track per-job time; redirect to payroll if asking about employee hours
+
+---
+
+### Key Ambiguity Resolution
+
+When user intent is unclear, apply these defaults:
+
+- "what's in production" → 6a (order-level WIP by station, most common intent)
+- "production status for order X" → 6c (specific station detail) + 4h (artwork if relevant)
+- "what's backed up" / "bottleneck" → 7e (bottleneck detection combining count + dwell)
+- "workload at [X]" → 6c (WIP detail) + 7a/7b (dwell context)
+
+---
+
+## SECTION 9: FORMATTING & RESPONSE GUIDELINES
+
+### Standard Formatting Patterns
+
+**Summary views:**
+- Show counts and dollar totals, rounded to dollars ($1,234)
+- No individual order numbers
+- Example: "**2-Production**: 40 orders ($123,456) -- avg 3.2 days dwell"
+
+**Detail views:**
+- Show order numbers, customer names, individual dollar amounts with cents ($1,234.56)
+- Example: "Order 133526 (ABC Corp): $4,567.89 -- 31 days at 2-Production"
+
+**Dwell times:**
+- Show in hours for < 24h: "18.5 hours"
+- Show in days for >= 24h: "3.2 days"
+- Always note the 1-business-day goal when presenting dwell data
+
+**Default scope:**
+- Active/open items only (WIP)
+- Completed work shown only on explicit request
+
+**Currency:**
+- Rounded in summaries ($1,234)
+- Precise in detail views ($1,234.56)
+
+**Station names:**
+- Always use the full station name from the database
+- Example: "2-Production-Embroidery", not "Embroidery"
+
+**Dual-level context:**
+- When showing a dual-level station, always note: "This station tracks both orders and line items. [N] orders and [M] line items are currently here."
+
+---
+
+## PRODUCTION SKILL COMPLETE
+
+This skill covers all three production workflow pillars:
+
+✅ **PROD-01**: Artwork pipeline (Section 4, 8 queries)
+✅ **PROD-02**: Station workload (Section 6, 4 queries)
+✅ **PROD-03**: Station dwell time (Section 7, 5 queries)
+✅ **NL Routing**: Complete trigger-to-query mapping (Section 8)
+
+**Total queries:** 17 production queries + 1 station discovery query
+**File size:** ~1,050 lines (below 1,200-line extraction threshold)
