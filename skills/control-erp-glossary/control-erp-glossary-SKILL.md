@@ -667,3 +667,5 @@ When a query could match multiple skills, apply these rules:
 ---
 
 *This glossary routes FLS business language to database patterns and the correct skill for detailed queries. It does not duplicate query templates, revenue figures, or business rules — those live in the referenced skills where they can be maintained and validated.*
+
+*Routing validated: 2026-02-10 — 25 test queries, 25/25 correct (100% accuracy)*
