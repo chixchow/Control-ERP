@@ -315,7 +315,7 @@ This glossary is a **routing and translation tool**, not a knowledge repository.
 **CustomerGoodsItem** — The actual table name for Products (ClassTypeID 12000) and Modifiers (ClassTypeID 12010). "Product" is the UI term, "CustomerGoodsItem" is the database table.
 - **Why it matters:** Schema documentation and SQL queries reference CustomerGoodsItem, not Product.
 - **Database table:** CustomerGoodsItem
-- **See:** output/schemas/CustomerGoodsItem.md (if exists)
+- **See:** output/schemas/Product.md
 
 **PricingElement** — A general-purpose table storing categories, families, plan types, and other pricing-related groupings identified by ClassTypeID.
 - **Why it matters:** Pricing hierarchy (families, categories) is not stored in dedicated tables but as PricingElement records with different ClassTypeIDs.
@@ -445,6 +445,93 @@ This glossary is a **routing and translation tool**, not a knowledge repository.
 
 **COGS (Cost of Goods Sold)** — Expense category for direct product costs (materials, freight, subcontract). GLClassificationType 5001.
 - **See:** control-erp-financial P&L from GL section
+
+---
+
+## CRYSTAL REPORTS CATALOG
+
+Crystal Reports are the legacy reporting engine at FLS Banners, running for 15+ years with battle-tested SQL. Skills are their modern replacement. When a report is "Replaced by" a skill, use the skill's query instead of running the Crystal Report. When a report is "Not yet covered", the Crystal Report is the only option—run it in Control.
+
+**LLM answers first.** Only recommend running the Crystal Report in Control when:
+- The skill doesn't cover that report's data domain
+- The report has complex formatting (invoices, work orders with proof images) that a query can't reproduce
+- The user specifically asks to run a Crystal Report
+
+> **Note:** Report details were inferred from filenames and database schema analysis, not extracted from binary .rpt files. Actual report definitions may differ.
+
+### Financial Reports
+
+| Report | Purpose | Coverage |
+|--------|---------|----------|
+| FLS Income Statement.rpt | P&L showing revenue, COGS, expenses by GL hierarchy | Replaced by control-erp-financial (Full P&L, P&L Summary) |
+| FLS Balance Sheet.rpt | Assets, liabilities, equity snapshot | Replaced by control-erp-financial (Balance Sheet Key Accounts) |
+| A_R Detail.rpt | AR aging with invoice-level detail per customer | Replaced by control-erp-financial (AR Aging Buckets, AR Snapshot) |
+| AR Report - Summary.rpt | AR summary totals by customer | Replaced by control-erp-financial (AR Aging summary) |
+| A_P Aging Detail.rpt | AP aging with vendor invoice detail | Replaced by control-erp-financial (AP Snapshot, AP Aging) |
+
+### WIP Reports
+
+| Report | Purpose | Coverage |
+|--------|---------|----------|
+| WIP Summary - Order Level.rpt | WIP summary aggregated at order level | Replaced by control-erp-production (Order-Level WIP) |
+| WIP By Line Item Station.rpt | WIP detail by station per line item | Replaced by control-erp-production (LI-Level WIP) |
+| WIP By Machine.rpt | WIP grouped by production station/machine | Replaced by control-erp-production (WIP by Station) |
+| WIP By Calendar Month Due.rpt | WIP aggregated by due date calendar month | Partially covered by control-erp-production |
+
+### Sales Reports
+
+| Report | Purpose | Coverage |
+|--------|---------|----------|
+| Orders Placed Between.rpt | Orders placed within date range | Replaced by control-erp-sales (Template 1) |
+| Sales - By Product.rpt | Revenue breakdown by product category | Replaced by control-erp-sales (Template 3 + 8) |
+| Sales - By Product Category.rpt | Revenue aggregated by product category groups | Partially covered by control-erp-sales |
+| Sales - By Customer (Volume).rpt | Top customers ranked by total revenue | Replaced by control-erp-customers (Top Customers by Revenue) |
+| Sales - By Customer (Frequency).rpt | Top customers ranked by order count | Replaced by control-erp-customers (Top Customers by Order Count) |
+| Sales - By Sales Account.rpt | Revenue grouped by sales account | Partially covered by control-erp-sales |
+| Sales - By All Salespeople.rpt | Revenue for all salesperson slots | Partially covered by control-erp-sales |
+| Sales - By Primary Saleperson.rpt | Revenue by primary salesperson | Replaced by control-erp-sales (Template 7) |
+| Based On Sales by Price.rpt | Sales sorted/grouped by price point | Partially covered by control-erp-sales |
+| Based on Orders Placed by Price.rpt | Orders sorted/grouped by price point | Partially covered by control-erp-sales |
+| Sales Graph.rpt | Visual sales trend graph | Replaced by control-erp-sales (Template 2) |
+| Sales Report.rpt | General sales summary report | Replaced by control-erp-sales (Template 1 + 8) |
+| Sales - Yearly Sales By Calendar Month.rpt | Year-over-year monthly comparison | Replaced by control-erp-sales (Template 9) |
+| Sales - Yearly Sales By Salesperson.rpt | Salesperson performance year-over-year | Partially covered by control-erp-sales |
+
+### Estimate Reports
+
+| Report | Purpose | Coverage |
+|--------|---------|----------|
+| Converted Estimates.rpt | Estimates that became orders | Partially covered by control-erp-core |
+| Pending Estimates.rpt | Active estimates awaiting decision | Partially covered by control-erp-core |
+| Last Order Aging.rpt | Dormant customer detection by last order date | Replaced by control-erp-customers (Dormancy) |
+| Est. vs Act. Cost Summary By Order.rpt | Estimated vs actual cost variance analysis | Not yet covered |
+
+### Inventory & Product Reports
+
+| Report | Purpose | Coverage |
+|--------|---------|----------|
+| All Parts Listing.rpt | Complete parts catalog dump | Partially covered by control-erp-inventory |
+| Catalog Listing.rpt | Catalog item listing | Partially covered by control-erp-inventory |
+| Inventory Listing.rpt | Current inventory levels for all parts | Partially covered by control-erp-inventory |
+| Inventory History.rpt | Historical inventory movement tracking | Partially covered by control-erp-inventory |
+| Product Detail.rpt | Full product configuration and pricing | Not yet covered |
+| Product Parameters.rpt | Product parameter/variable definitions | Not yet covered |
+
+### Other Reports
+
+| Report | Purpose | Coverage |
+|--------|---------|----------|
+| Last Contact Aging.rpt | Customer engagement tracking by last contact | Partially covered by control-erp-customers |
+| Shipped By Date.rpt | Shipment tracking by date range | Not yet covered |
+| Work Order with Proof.rpt | Formatted work order with embedded proof images | Not yet covered (run in Control) |
+
+### Coverage Summary
+
+| Status | Count | % |
+|--------|-------|---|
+| Replaced by skill | 17 | 47% |
+| Partially covered | 14 | 39% |
+| Not yet covered | 5 | 14% |
 
 ---
 
