@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 ## Current Position
 
-Phase: 12 of 13 (Production Workflow) -- VERIFIED
-Plan: 2 of 2 complete
-Status: Phase complete, verified (13/13 must-haves passed)
-Last activity: 2026-02-10 -- Phase 12 verified and closed
+Phase: 13 of 13 (Glossary Integration)
+Plan: 1 of 2 complete
+Status: In progress
+Last activity: 2026-02-10 -- Completed 13-01-PLAN.md (Crystal Reports Catalog)
 
-Progress: [████████░░] 80% (v1.1) -- 8 of 10 plans complete, 4 of 5 phases done
+Progress: [█████████░] 90% (v1.1) -- 9 of 10 plans complete, 4.5 of 5 phases done
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [████████░░] 80% (v1.1) -- 8 of 10 plans complete,
 - Total execution time: 1.04 hours
 
 **v1.1 Velocity:**
-- Total plans completed: 8
-- Average duration: 3min18s
-- Total execution time: 0.45 hours
+- Total plans completed: 9
+- Average duration: 3min10s
+- Total execution time: 0.48 hours
 
 ## Accumulated Context
 
@@ -64,6 +64,9 @@ Recent decisions affecting current work:
 - Bottleneck thresholds: CRITICAL = 10+ orders + 48h dwell, BOTTLENECK = 5+ orders + 24h dwell
 - 3-month rolling window default for Journal dwell queries (1.06M station change records require date filtering)
 - COALESCE(next_transition, GETDATE()) for current WIP dwell (items still at station)
+- Route "top customers" to control-erp-customers (not sales) -- comprehensive ranking with YoY, Pareto, segmentation
+- 5 Crystal Reports marked "Not yet covered" vs attempting synthesis -- honest gap acknowledgment prevents unvalidated answers
+- No TransactionType values cited from report_summary.md -- inferred SQL is incorrect (Type 3=Order); use core skill mappings only
 
 ### Pending Todos
 
@@ -71,14 +74,14 @@ None.
 
 ### Blockers/Concerns
 
-- Phase 11: COMPLETE
-- Phase 12: COMPLETE (all 3 requirements: PROD-01 artwork, PROD-02 workload, PROD-03 dwell time)
+None.
 
 ## Session Continuity
 
-Last session: 2026-02-10T01:00Z
-Stopped at: Phase 12 verified and closed. Phase 13 (Glossary Integration) is next.
+Last session: 2026-02-10T03:58Z
+Stopped at: Completed 13-01-PLAN.md (Crystal Reports Catalog + Gap Log). Phase 13 Plan 02 (Expanded NL Routing) is next.
 Resume file: None
 
 **v1.0 Status:** SHIPPED (8 phases, 15 plans, 35/35 requirements)
 **v1.1 Scope:** 14 requirements across 5 phases (9-13), 5 domains
+**Phase 13 Progress:** 1 of 2 plans complete (Reports Catalog ✓, NL Routing pending)
