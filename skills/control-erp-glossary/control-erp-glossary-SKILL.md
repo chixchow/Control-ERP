@@ -537,6 +537,10 @@ Crystal Reports are the legacy reporting engine at FLS Banners, running for 15+ 
 
 ## NATURAL LANGUAGE ROUTING TABLE
 
+> Last synchronized with domain skills: 2026-02-10. Update this table when any domain skill's NL patterns change.
+
+### Sales & Revenue Queries
+
 | User Says | Route To | Key Pattern/Section |
 |-----------|----------|-------------------|
 | "find blanket orders" | control-erp-sales | Description LIKE '%Blanket%' pattern |
@@ -547,31 +551,118 @@ Crystal Reports are the legacy reporting engine at FLS Banners, running for 15+ 
 | "step and repeat revenue" | control-erp-sales | FP_ProductDescription = 'Backdrop' |
 | "Fab Frame orders" | control-erp-sales | FP_ProductDescription = 'Fab Frames' |
 | "table throw sales" | control-erp-sales | Description LIKE '%Table Throw%' |
-| "top customers" / "customer revenue" | control-erp-sales | Template 6 |
+| "swing flag orders" / "swooper sales" | control-erp-sales | FP_ProductDescription = 'Swing Flags' |
+| "customer revenue" / "[customer] sales" | control-erp-sales | Template 6 (revenue context) |
 | "sales by rep" / "salesperson performance" | control-erp-sales | Template 7 |
 | "what were our sales in [period]" | control-erp-sales | Template 1 or 2 |
 | "monthly revenue trend" | control-erp-sales | Template 2 |
 | "compare this year to last year" | control-erp-sales | Template 9 |
-| "What is CHAPI?" | control-erp-glossary | See CHAPI definition above |
-| "What is a SSLIP?" | control-erp-glossary | See SSLIP definition above |
-| "what is a ClassTypeID" | control-erp-glossary | See ClassTypeID definition above |
-| "what TransactionType is an estimate" | control-erp-core | TransactionType Reference table |
-| "order lifecycle" / "status flow" | control-erp-core | StatusID Reference section |
-| "revenue query formula" | control-erp-core | CRITICAL: Revenue Query Formula section |
+| "total revenue" / "how much did we sell" | control-erp-sales | Template 1 or 8 |
+| "orders placed" / "new orders" | control-erp-sales | Template 1 with OrderCreatedDate |
+
+### Customer Queries
+
+| User Says | Route To | Key Pattern/Section |
+|-----------|----------|-------------------|
+| "top customers" / "biggest customers" / "best customers" | control-erp-customers | Customer Ranking (Top N) |
+| "customer profile for [X]" / "look up [customer]" / "who is [customer]" | control-erp-customers | Customer Search + Profile |
+| "customer segmentation" / "RFM" / "customer tiers" | control-erp-customers | RFM Segmentation |
+| "at-risk customers" / "churn risk" / "customers we might lose" | control-erp-customers | At-Risk Detection |
+| "dormant customers" / "haven't ordered in [X] months" | control-erp-customers | Dormancy Detection |
+| "customer order history" / "what has [customer] ordered" | control-erp-customers | Order History drill-down |
+| "new customers" / "customer acquisition" | control-erp-customers | New Customer Identification |
+| "customer AR" / "what does [customer] owe" / "[customer] balance" | control-erp-customers | Customer AR Balance |
+| "customer lifetime value" / "CLV" | control-erp-customers | RFM + Revenue Ranking |
+| "repeat customers" / "customer retention" | control-erp-customers | Order Frequency Analysis |
+| "customer contact info" / "customer address" / "customer phone" | control-erp-customers | Customer Search (contact details) |
+| "last contact" / "when did we last contact [customer]" | control-erp-customers | Last Contact Activity |
+
+### Financial Queries
+
+| User Says | Route To | Key Pattern/Section |
+|-----------|----------|-------------------|
 | "AR aging" / "past due invoices" | control-erp-financial | AR Aging Buckets query |
 | "what's our AR" / "open invoices" | control-erp-financial | AR Snapshot query |
 | "AP aging" / "what's overdue" | control-erp-financial | AP Aging query |
 | "what do we owe" / "open bills" | control-erp-financial | AP Snapshot query |
-| "P&L" / "profit and loss" | control-erp-financial | P&L Summary or Full P&L query |
+| "what do we owe vendors" | control-erp-financial | AP Snapshot query |
+| "P&L" / "profit and loss" / "income statement" | control-erp-financial | P&L Summary or Full P&L query |
 | "revenue by product" (GL-based) | control-erp-financial | Revenue by Product Line query |
-| "gross margin" | control-erp-financial | P&L Summary → GrossProfit/TotalRevenue |
+| "gross margin" / "gross profit" | control-erp-financial | P&L Summary → GrossProfit/TotalRevenue |
 | "cash position" / "how much cash" | control-erp-financial | Balance Sheet Key Accounts |
+| "balance sheet" / "assets and liabilities" | control-erp-financial | Balance Sheet Key Accounts |
 | "COGS" / "cost of goods" | control-erp-financial | Full P&L filtered to GLClass 5001 |
 | "expenses breakdown" | control-erp-financial | Full P&L filtered to GLClass 5002 |
 | "inventory value" | control-erp-financial | Balance Sheet → NodeID 10414 |
 | "WIP balance" / "orders in production value" | control-erp-financial | Balance Sheet → NodeID 11 |
 | "GL entries for order #NNNNN" | control-erp-financial | Ledger WHERE TransHeaderID query |
 | "how did [customer] pay" / "payment history" | control-erp-financial | GL register query on NodeID 24 or 14 |
+
+### Inventory & Parts Queries
+
+| User Says | Route To | Key Pattern/Section |
+|-----------|----------|-------------------|
+| "check stock for [X]" / "what's in stock" / "inventory for [part]" | control-erp-inventory | Stock Level Check |
+| "what needs reordering" / "low stock" / "below reorder point" | control-erp-inventory | Reorder Alert |
+| "what does [X] cost" / "last price paid for [part]" | control-erp-inventory | Last Price Paid (PO history) |
+| "top vendors" / "who do we buy from" | control-erp-inventory | Top Vendors by PO |
+| "how much [part] do we use" / "consumption rate" / "usage rate" | control-erp-inventory | Material Consumption |
+| "PO history" / "purchase orders for [part]" | control-erp-inventory | PO History for Part |
+| "parts list" / "all parts" / "part categories" | control-erp-inventory | Part Search and Browse |
+| "months of supply" / "how long will stock last" | control-erp-inventory | Months of Supply (secondary tier) |
+
+### Production & Artwork Queries
+
+| User Says | Route To | Key Pattern/Section |
+|-----------|----------|-------------------|
+| "artwork pipeline" / "pending approvals" / "artwork status" | control-erp-production | Artwork Pipeline Summary |
+| "what's in production" / "WIP" / "work in progress" | control-erp-production | Order-Level WIP by Station |
+| "which stations are backed up" / "bottlenecks" | control-erp-production | Bottleneck Detection |
+| "dwell time" / "how long at [station]" / "station time" | control-erp-production | Average Dwell Time |
+| "station workload" / "what's at [station]" | control-erp-production | Station Workload |
+| "stuck artwork" / "overdue proofs" | control-erp-production | Stuck Detection (7-day threshold) |
+| "artwork turnaround" / "how long does approval take" | control-erp-production | Turnaround Analysis |
+| "revision rate" / "how many revisions" | control-erp-production | Revision Rate per Group |
+
+### Report Discovery Queries
+
+| User Says | Route To | Key Pattern/Section |
+|-----------|----------|-------------------|
+| "is there a report for [X]" / "what report shows [X]" | control-erp-glossary | Crystal Reports Catalog (above) |
+| "AR report" / "aging report" | control-erp-glossary | Crystal Reports Catalog → then route to skill |
+| "sales report" / "revenue report" | control-erp-glossary | Crystal Reports Catalog → then route to skill |
+| "inventory report" / "parts report" | control-erp-glossary | Crystal Reports Catalog → then route to skill |
+| "WIP report" / "production report" | control-erp-glossary | Crystal Reports Catalog → then route to skill |
+
+### Technical Terminology Queries
+
+| User Says | Route To | Key Pattern/Section |
+|-----------|----------|-------------------|
+| "What is CHAPI?" | control-erp-glossary | See CHAPI definition above |
+| "What is a SSLIP?" | control-erp-glossary | See SSLIP definition above |
+| "what is a ClassTypeID" | control-erp-glossary | See ClassTypeID definition above |
+| "what TransactionType is an estimate" | control-erp-core | TransactionType Reference table |
+| "order lifecycle" / "status flow" | control-erp-core | StatusID Reference section |
+| "revenue query formula" | control-erp-core | CRITICAL: Revenue Query Formula section |
+
+### Gap / Not Covered
+
+| User Says | Route To | Key Pattern/Section |
+|-----------|----------|-------------------|
+| "timecards" / "payroll" / "overtime" | NOT COVERED | See gap-log.md |
+| "commissions" / "commission rates" | NOT COVERED | See gap-log.md |
+| "shipping tracking" / "tracking numbers" | NOT COVERED | See gap-log.md |
+| "product parameters" / "product configuration" | NOT COVERED | See gap-log.md |
+
+### Overlap Resolution
+
+When a query could match multiple skills, apply these rules:
+- "top customers" → control-erp-customers (comprehensive ranking with Pareto, YoY, segmentation); control-erp-sales also has a simpler version
+- "revenue by product" → control-erp-sales (TransHeader-based); control-erp-financial if user asks for GL perspective
+- "WIP" → control-erp-production (station detail) unless user asks for WIP balance/value → control-erp-financial
+- "inventory value" → control-erp-financial (GL authoritative); control-erp-inventory for part-level detail
+- "customer AR" / "[customer] balance" → control-erp-customers for profile context; control-erp-financial for aging detail
+- When genuinely ambiguous → ask the user to clarify rather than guessing
 
 ---
 
