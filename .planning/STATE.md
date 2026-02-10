@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 13 of 13 (Glossary Integration)
-Plan: 1 of 2 complete
-Status: In progress
-Last activity: 2026-02-10 -- Completed 13-01-PLAN.md (Crystal Reports Catalog)
+Plan: 2 of 2 complete
+Status: Phase complete
+Last activity: 2026-02-10 -- Completed 13-02-PLAN.md (Expanded NL Routing)
 
-Progress: [█████████░] 90% (v1.1) -- 9 of 10 plans complete, 4.5 of 5 phases done
+Progress: [██████████] 100% (v1.1) -- 10 of 10 plans complete, 5 of 5 phases done
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [█████████░] 90% (v1.1) -- 9 of 10 plans complete,
 - Total execution time: 1.04 hours
 
 **v1.1 Velocity:**
-- Total plans completed: 9
-- Average duration: 3min10s
-- Total execution time: 0.48 hours
+- Total plans completed: 10
+- Average duration: 3min05s
+- Total execution time: 0.51 hours
 
 ## Accumulated Context
 
@@ -67,6 +67,9 @@ Recent decisions affecting current work:
 - Route "top customers" to control-erp-customers (not sales) -- comprehensive ranking with YoY, Pareto, segmentation
 - 5 Crystal Reports marked "Not yet covered" vs attempting synthesis -- honest gap acknowledgment prevents unvalidated answers
 - No TransactionType values cited from report_summary.md -- inferred SQL is incorrect (Type 3=Order); use core skill mappings only
+- NL routing table organized with subsections (Sales, Customer, Financial, Inventory, Production, Reports, Technical, Gaps) for clarity and maintenance
+- Overlap resolution rules documented inline (6 explicit rules) vs algorithmic disambiguation -- simpler, more maintainable
+- Routing accuracy validated at 100% (25/25 test queries) before deployment
 
 ### Pending Todos
 
@@ -78,10 +81,10 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-10T03:58Z
-Stopped at: Completed 13-01-PLAN.md (Crystal Reports Catalog + Gap Log). Phase 13 Plan 02 (Expanded NL Routing) is next.
+Last session: 2026-02-10T04:05Z
+Stopped at: Completed 13-02-PLAN.md (Expanded NL Routing). Phase 13 complete.
 Resume file: None
 
 **v1.0 Status:** SHIPPED (8 phases, 15 plans, 35/35 requirements)
 **v1.1 Scope:** 14 requirements across 5 phases (9-13), 5 domains
-**Phase 13 Progress:** 1 of 2 plans complete (Reports Catalog ✓, NL Routing pending)
+**v1.1 Status:** SHIPPED (5 phases, 10 plans, 14/14 requirements)
