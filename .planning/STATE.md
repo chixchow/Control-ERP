@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 ## Current Position
 
-Phase: 11 of 13 (Inventory Management) -- COMPLETE
-Plan: 2 of 2 complete
-Status: Phase complete
-Last activity: 2026-02-09 -- Completed 11-02-PLAN.md (Purchasing Intelligence and NL Routing)
+Phase: 12 of 13 (Production Workflow)
+Plan: 1 of 2 complete
+Status: In progress
+Last activity: 2026-02-10 -- Completed 12-01-PLAN.md (Production Skill with Artwork Pipeline)
 
-Progress: [██████░░░░] 60% (v1.1) -- 6 of 10 plans complete
+Progress: [███████░░░] 70% (v1.1) -- 7 of 10 plans complete
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [██████░░░░] 60% (v1.1) -- 6 of 10 plans complete
 - Total execution time: 1.04 hours
 
 **v1.1 Velocity:**
-- Total plans completed: 6
-- Average duration: 3min24s
-- Total execution time: 0.34 hours
+- Total plans completed: 7
+- Average duration: 3min18s
+- Total execution time: 0.39 hours
 
 ## Accumulated Context
 
@@ -56,6 +56,10 @@ Recent decisions affecting current work:
 - VendorTransDetail polymorphic link: try CatalogItem path (12076) first, then direct Part (12014)
 - Months of supply calculation marked as SECONDARY TIER (depends on incomplete data)
 - th.ID DESC for PO ordering (not SaleDate which is unreliable for Type 7)
+- Artwork stuck threshold: 7 days (3x average 54-hour turnaround), adjustable per user request
+- StatusID=8 ("Unknown") excluded from actionable artwork pipeline -- 25,274 groups represent orders without formal artwork workflow (intentional)
+- Artwork turnaround filter: ArtworkApprovalDT > GroupCreatedDT (excludes cloned-order stale dates)
+- Production skill kept integrated at 418 lines (not extracted to references, below 1,200-line threshold)
 
 ### Pending Todos
 
@@ -64,12 +68,12 @@ None.
 ### Blockers/Concerns
 
 - Phase 11: COMPLETE -- blocker cleared
-- Phase 12: Station hierarchy and artwork status usage still require live database discovery
+- Phase 12: Artwork pipeline (PROD-01) complete; station workload and dwell time (PROD-02/03) ready to build in Plan 02
 
 ## Session Continuity
 
-Last session: 2026-02-09T19:12Z
-Stopped at: Completed 11-02-PLAN.md (Purchasing Intelligence and NL Routing) -- Phase 11 COMPLETE (2/2)
+Last session: 2026-02-10T00:22Z
+Stopped at: Completed 12-01-PLAN.md (Production Skill with Artwork Pipeline) -- Phase 12 Plan 1 of 2
 Resume file: None
 
 **v1.0 Status:** SHIPPED (8 phases, 15 plans, 35/35 requirements)
