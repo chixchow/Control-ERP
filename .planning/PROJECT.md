@@ -71,15 +71,18 @@ Any FLS team member can ask a business question in plain English and get an accu
 
 <!-- Current scope. Building toward these. -->
 
-**Future Read-Layer:**
-- [ ] **HR-01**: Employee, payroll, PTO queries (read-only)
-- [ ] **HR-02**: Timecard reporting and labor cost analysis
-- [ ] **ANLYT-01**: Sales forecasting based on historical patterns
-- [ ] **ANLYT-02**: Trend analysis and seasonal pattern detection
-- [ ] **DASH-01**: Interactive executive dashboard (React artifacts)
-- [ ] **DIV-01**: Banner Division vs Apparel Division breakdowns for all query types
+**v1.2 — Analytics, Dashboards & Division Support:**
+- [ ] **ANLYT-01**: Sales forecasting based on historical patterns (quarterly + annual)
+- [ ] **ANLYT-02**: Trend analysis and seasonal pattern detection (product line growth/decline)
+- [ ] **DASH-01**: Executive text summary ("morning report" with key metrics, trends, alerts)
+- [ ] **DASH-02**: Interactive visual dashboard (React artifacts with charts, gauges, tables)
+- [ ] **DIV-01**: Division filtering for sales queries (Banner vs Apparel breakdowns)
+- [ ] **DIV-02**: Division filtering for AR queries (Apparel Division receivables visibility)
+- [ ] **DIV-03**: Division filtering framework extensible to all query types
 
-**Write-Layer Skills (Milestone 3):**
+**Future Milestones:**
+- [ ] **HR-01**: Employee, payroll, PTO queries (read-only) — deferred until new time clock app integration
+- [ ] **HR-02**: Timecard reporting and labor cost analysis — deferred until new time clock app integration
 - [ ] **WRITE-01**: Create customer accounts/contacts through CHAPI import stored procedures
 - [ ] **WRITE-02**: Create estimates through CHAPI with confirmation workflow
 - [ ] **WRITE-03**: Create orders through CHAPI with full validation and confirmation
@@ -98,6 +101,18 @@ Any FLS team member can ask a business question in plain English and get an accu
 - **Mobile app** — Web/CLI interface only. Mobile can come later.
 - **Direct SQL writes** — ALL writes go through CHAPI. No exceptions. Ever. This is a hard safety rule.
 - **Third-party integrations** — No Salesforce, QuickBooks, etc. Control is the system of record.
+- **Deep HR/Payroll queries** — Deferred until new time clock app is built. Payroll expense is queried via GL entries per pay period. No TimeCard/Payroll table deep dives this milestone.
+
+## Current Milestone: v1.2 Analytics, Dashboards & Division Support
+
+**Goal:** Add forward-looking analytics (sales forecasting, trend detection), executive dashboards (text + visual React artifacts), and division-level filtering (Banner vs Apparel) starting with sales and AR.
+
+**Target features:**
+- Sales forecasting — quarterly and annual projections from historical data, seasonal adjustments
+- Trend detection — product line growth/decline, pattern identification over time
+- Executive dashboards — text-based morning report + React artifact visual dashboards
+- Division filtering — Banner vs Apparel breakdowns, priority on sales and AR for Apparel Division visibility (Gretel)
+- Payroll expense queries — GL-based, lightweight (no deep TimeCard/Payroll build)
 
 ## Context
 
@@ -116,6 +131,7 @@ Any FLS team member can ask a business question in plain English and get an accu
 - Cain (CMO/President) — project owner, primary user
 - Taylor, Gretel — business partners, stakeholders for validation gates
 - Gretel — manages Apparel Division
+- Carrie Goetelman — runs payroll in Control
 
 **Current State (after v1.1):**
 - `control-erp-core` skill: Foundation — TransactionType, StatusID, pricing rules, validated to 99.98%
@@ -161,9 +177,9 @@ Any FLS team member can ask a business question in plain English and get an accu
 | GL NodeID 10414 for inventory valuation | Part-level sum is -$2.1M (meaningless); GL is authoritative ($651K) | ✓ Good — matches accountant expectations |
 | LEAD() window for production dwell time | FLS doesn't use TimeCard for per-job tracking; Journal transitions are the metric | ✓ Good — 1.06M station change records usable |
 | Route "top customers" to customers skill (not sales) | Comprehensive ranking with YoY, Pareto, segmentation | ✓ Good — clear domain boundaries |
-| Defer HR/Payroll to future milestone | Lower priority than finance/customer/ops, not actively queried | — Pending |
-| Defer analytics/dashboards to future milestone | Focus on query accuracy first, analytics is a nice-to-have | — Pending |
+| Defer deep HR/Payroll to time clock app milestone | New time clock app being built separately; payroll expense available via GL; no need for TimeCard/Payroll deep queries yet | ✓ Good — avoids building what will be replaced |
+| Analytics/dashboards/divisions as v1.2 | Read layer complete, ready for analytical layer; division filtering critical for Apparel visibility | — Pending |
 | All domains held to same validation standard | Every skill must validate against Control reports, not just financial | ✓ Good — consistent with v1.0 approach |
 
 ---
-*Last updated: 2026-02-10 after v1.1 milestone completion*
+*Last updated: 2026-02-09 after v1.2 milestone initialization*

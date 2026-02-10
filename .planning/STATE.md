@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-10)
+See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** Any FLS team member can ask a business question in plain English and get an accurate, formatted answer from their ERP data.
-**Current focus:** Planning next milestone
+**Current focus:** v1.2 Analytics, Dashboards & Division Support
 
 ## Current Position
 
-Phase: 13 of 13 complete
-Plan: All complete
-Status: Milestone v1.1 shipped
-Last activity: 2026-02-10 — v1.1 milestone complete
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-09 — Milestone v1.2 started
 
-Progress: [██████████] 100% (v1.0 + v1.1) — 13 phases, 25 plans, 49 requirements shipped
+Progress: [░░░░░░░░░░] 0% (v1.2)
 
 ## Performance Metrics
 
@@ -28,7 +28,7 @@ Progress: [██████████] 100% (v1.0 + v1.1) — 13 phases, 25 
 - Average duration: 3min05s
 - Total execution time: 0.51 hours
 
-**Combined:**
+**Combined (v1.0 + v1.1):**
 - 25 plans across 13 phases
 - 1.55 hours total execution time
 - 49/49 requirements shipped
@@ -45,14 +45,16 @@ None.
 
 ### Blockers/Concerns
 
-None.
+- New time clock app being built separately — HR/Payroll deep queries deferred until that app needs CHAPI integration
+- Division filtering needs DivisionID discovery in TransHeader/Account to understand how FLS segments Banner vs Apparel
 
 ## Session Continuity
 
-Last session: 2026-02-10
-Stopped at: v1.1 milestone archived and tagged
+Last session: 2026-02-09
+Stopped at: v1.2 milestone initialization
 Resume file: None
 
 **v1.0 Status:** SHIPPED (8 phases, 15 plans, 35/35 requirements)
 **v1.1 Status:** SHIPPED (5 phases, 10 plans, 14/14 requirements)
-**Next:** /gsd:new-milestone to define next scope
+**v1.2 Status:** INITIALIZING — requirements definition in progress
+**Next:** Complete requirements → roadmap → /gsd:plan-phase 14
