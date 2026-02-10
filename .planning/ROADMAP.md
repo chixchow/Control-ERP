@@ -25,7 +25,7 @@ See: .planning/milestones/v1.0-ROADMAP.md
 - [x] **Phase 9: Financial Depth** - Extend financial skill with AR aging, AP tracking, P&L breakdown, and cash flow
 - [x] **Phase 10: Customer Intelligence** - New skill for customer lookup, segmentation, CLV, and churn detection
 - [ ] **Phase 11: Inventory Management** - New skill for stock levels, reorder monitoring, and warehouse planning
-- [ ] **Phase 12: Production Workflow** - New skill for artwork pipeline, station workload, and labor analysis
+- [x] **Phase 12: Production Workflow** - New skill for artwork pipeline, station workload, and dwell time analysis
 - [ ] **Phase 13: Glossary Integration + Reports Catalog** - Extend glossary with Crystal Reports catalog and routing for all new domains
 
 ## Parallelism
@@ -136,8 +136,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 12-01-PLAN.md -- Create production skill with table architecture and artwork pipeline queries (PROD-01)
-- [ ] 12-02-PLAN.md -- Add station workload (PROD-02), station dwell time analysis (PROD-03), and NL routing
+- [x] 12-01-PLAN.md -- Create production skill with table architecture and artwork pipeline queries (PROD-01)
+- [x] 12-02-PLAN.md -- Add station workload (PROD-02), station dwell time analysis (PROD-03), and NL routing
 
 ### Phase 13: Glossary Integration + Reports Catalog
 
@@ -165,9 +165,9 @@ Phases execute in numeric order with parallelization: 9+10 (parallel) -> 11 -> 1
 | 9. Financial Depth | v1.1 | 2/2 | Complete | 2026-02-09 |
 | 10. Customer Intelligence | v1.1 | 2/2 | Complete | 2026-02-09 |
 | 11. Inventory Management | v1.1 | 2/2 | Complete | 2026-02-09 |
-| 12. Production Workflow | v1.1 | 0/2 | Planned | - |
+| 12. Production Workflow | v1.1 | 2/2 | Complete | 2026-02-10 |
 | 13. Glossary Integration | v1.1 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-02-09 after Phase 11 completion*
+*Last updated: 2026-02-10 after Phase 12 completion*

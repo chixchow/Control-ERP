@@ -28,9 +28,9 @@ Requirements for read-layer domain expansion. Each maps to roadmap phases.
 
 ### Production Workflow
 
-- [ ] **PROD-01**: Artwork status and approval pipeline queries (artwork by status, pending approvals, proof history, turnaround time)
-- [ ] **PROD-02**: Station workload and scheduling queries (jobs per station, station utilization, bottleneck identification)
-- [ ] **PROD-03**: Time tracking and labor analysis from TimeCard tables (hours by employee, station time, labor cost per order)
+- [x] **PROD-01**: Artwork status and approval pipeline queries (artwork by status, pending approvals, proof history, turnaround time)
+- [x] **PROD-02**: Station workload and scheduling queries (jobs per station, station utilization, bottleneck identification)
+- [x] **PROD-03**: Station dwell time and process efficiency analysis (average dwell per station/stage, slow-stage identification, dwell by order size)
 
 ### Reports Catalog
 
@@ -88,9 +88,9 @@ Explicitly excluded. Documented to prevent scope creep.
 | INV-01 | Phase 11 | Pending |
 | INV-02 | Phase 11 | Pending |
 | INV-03 | Phase 11 | Pending |
-| PROD-01 | Phase 12 | Pending |
-| PROD-02 | Phase 12 | Pending |
-| PROD-03 | Phase 12 | Pending |
+| PROD-01 | Phase 12 | Complete |
+| PROD-02 | Phase 12 | Complete |
+| PROD-03 | Phase 12 | Complete |
 | RPT-01 | Phase 13 | Pending |
 
 **Coverage:**
@@ -100,4 +100,4 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-09 after Phase 9 completion*
+*Last updated: 2026-02-10 after Phase 12 completion*
