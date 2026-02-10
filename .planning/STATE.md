@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 12 of 13 (Production Workflow)
-Plan: 1 of 2 complete
-Status: In progress
-Last activity: 2026-02-10 -- Completed 12-01-PLAN.md (Production Skill with Artwork Pipeline)
+Plan: 2 of 2 complete
+Status: Phase complete
+Last activity: 2026-02-10 -- Completed 12-02-PLAN.md (Station Workload & Dwell Time)
 
-Progress: [███████░░░] 70% (v1.1) -- 7 of 10 plans complete
+Progress: [████████░░] 80% (v1.1) -- 8 of 10 plans complete
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [███████░░░] 70% (v1.1) -- 7 of 10 plans complete
 - Total execution time: 1.04 hours
 
 **v1.1 Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: 3min18s
-- Total execution time: 0.39 hours
+- Total execution time: 0.45 hours
 
 ## Accumulated Context
 
@@ -59,7 +59,11 @@ Recent decisions affecting current work:
 - Artwork stuck threshold: 7 days (3x average 54-hour turnaround), adjustable per user request
 - StatusID=8 ("Unknown") excluded from actionable artwork pipeline -- 25,274 groups represent orders without formal artwork workflow (intentional)
 - Artwork turnaround filter: ArtworkApprovalDT > GroupCreatedDT (excludes cloned-order stale dates)
-- Production skill kept integrated at 418 lines (not extracted to references, below 1,200-line threshold)
+- Production skill kept integrated at ~1,050 lines (not extracted to references, below 1,200-line threshold)
+- LEAD() window function for dwell time calculation (PARTITION BY TransactionID, ISNULL(LinkID, 0))
+- Bottleneck thresholds: CRITICAL = 10+ orders + 48h dwell, BOTTLENECK = 5+ orders + 24h dwell
+- 3-month rolling window default for Journal dwell queries (1.06M station change records require date filtering)
+- COALESCE(next_transition, GETDATE()) for current WIP dwell (items still at station)
 
 ### Pending Todos
 
@@ -67,13 +71,13 @@ None.
 
 ### Blockers/Concerns
 
-- Phase 11: COMPLETE -- blocker cleared
-- Phase 12: Artwork pipeline (PROD-01) complete; station workload and dwell time (PROD-02/03) ready to build in Plan 02
+- Phase 11: COMPLETE
+- Phase 12: COMPLETE (all 3 requirements: PROD-01 artwork, PROD-02 workload, PROD-03 dwell time)
 
 ## Session Continuity
 
-Last session: 2026-02-10T00:22Z
-Stopped at: Completed 12-01-PLAN.md (Production Skill with Artwork Pipeline) -- Phase 12 Plan 1 of 2
+Last session: 2026-02-10T00:31Z
+Stopped at: Completed 12-02-PLAN.md (Station Workload & Dwell Time) -- Phase 12 complete (2 of 2 plans)
 Resume file: None
 
 **v1.0 Status:** SHIPPED (8 phases, 15 plans, 35/35 requirements)
