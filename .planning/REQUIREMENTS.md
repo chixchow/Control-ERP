@@ -34,7 +34,7 @@ Requirements for read-layer domain expansion. Each maps to roadmap phases.
 
 ### Reports Catalog
 
-- [ ] **RPT-01**: Crystal Report catalog -- what exists, parameters, when to use vs. custom query (36 reports mapped to user intents, integrated into glossary routing)
+- [x] **RPT-01**: Crystal Report catalog -- what exists, parameters, when to use vs. custom query (36 reports mapped to user intents, integrated into glossary routing)
 
 ## Validation Standard
 
@@ -82,16 +82,16 @@ Explicitly excluded. Documented to prevent scope creep.
 | FIN-05 | Phase 9 | Complete |
 | FIN-06 | Phase 9 | Complete |
 | FIN-07 | Phase 9 | Complete |
-| CUST-01 | Phase 10 | Pending |
-| CUST-02 | Phase 10 | Pending |
-| CUST-03 | Phase 10 | Pending |
-| INV-01 | Phase 11 | Pending |
-| INV-02 | Phase 11 | Pending |
-| INV-03 | Phase 11 | Pending |
+| CUST-01 | Phase 10 | Complete |
+| CUST-02 | Phase 10 | Complete |
+| CUST-03 | Phase 10 | Complete |
+| INV-01 | Phase 11 | Complete |
+| INV-02 | Phase 11 | Complete |
+| INV-03 | Phase 11 | Complete |
 | PROD-01 | Phase 12 | Complete |
 | PROD-02 | Phase 12 | Complete |
 | PROD-03 | Phase 12 | Complete |
-| RPT-01 | Phase 13 | Pending |
+| RPT-01 | Phase 13 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 14 total
@@ -100,4 +100,4 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-10 after Phase 12 completion*
+*Last updated: 2026-02-10 after Phase 13 completion — v1.1 SHIPPED (14/14 requirements complete)*

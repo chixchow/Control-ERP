@@ -3,7 +3,7 @@
 ## Milestones
 
 - v1.0 Foundation + Sales (shipped 2026-02-09)
-- v1.1 Read-Layer Build-Out (in progress)
+- v1.1 Read-Layer Build-Out (shipped 2026-02-10)
 
 ## Phases
 
@@ -16,7 +16,7 @@ See: .planning/milestones/v1.0-ROADMAP.md
 
 </details>
 
-### v1.1 Read-Layer Build-Out (In Progress)
+### v1.1 Read-Layer Build-Out (Shipped 2026-02-10)
 
 **Milestone Goal:** Expand the natural language interface from sales/financial foundation to all major business domains -- customer intelligence, inventory management, production workflow -- and integrate a Crystal Reports routing catalog. Every new skill validates against Control's built-in reports before shipping.
 
@@ -24,9 +24,9 @@ See: .planning/milestones/v1.0-ROADMAP.md
 
 - [x] **Phase 9: Financial Depth** - Extend financial skill with AR aging, AP tracking, P&L breakdown, and cash flow
 - [x] **Phase 10: Customer Intelligence** - New skill for customer lookup, segmentation, CLV, and churn detection
-- [ ] **Phase 11: Inventory Management** - New skill for stock levels, reorder monitoring, and warehouse planning
+- [x] **Phase 11: Inventory Management** - New skill for stock levels, reorder monitoring, and warehouse planning
 - [x] **Phase 12: Production Workflow** - New skill for artwork pipeline, station workload, and dwell time analysis
-- [ ] **Phase 13: Glossary Integration + Reports Catalog** - Extend glossary with Crystal Reports catalog and routing for all new domains
+- [x] **Phase 13: Glossary Integration + Reports Catalog** - Extend glossary with Crystal Reports catalog and routing for all new domains
 
 ## Parallelism
 
@@ -82,7 +82,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 10-01-PLAN.md -- Create customer skill with profile lookup, smart search, and drill-down queries (CUST-01)
+- [x] 10-01-PLAN.md -- Create customer skill with profile lookup, smart search, and drill-down queries (CUST-01)
 - [x] 10-02-PLAN.md -- Add ranking, RFM segmentation, and churn detection with personalized dormancy (CUST-02, CUST-03)
 
 **Critical pitfalls:**
@@ -157,8 +157,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 13-01-PLAN.md -- Crystal Reports catalog (36 reports with coverage status) + gap log file
-- [ ] 13-02-PLAN.md -- Expand NL routing to all 6 domain skills + validate with 25 test queries
+- [x] 13-01-PLAN.md -- Crystal Reports catalog (36 reports with coverage status) + gap log file
+- [x] 13-02-PLAN.md -- Expand NL routing to all 6 domain skills + validate with 25 test queries
 
 ## Progress
 
@@ -171,8 +171,8 @@ Phases execute in numeric order with parallelization: 9+10 (parallel) -> 11 -> 1
 | 10. Customer Intelligence | v1.1 | 2/2 | Complete | 2026-02-09 |
 | 11. Inventory Management | v1.1 | 2/2 | Complete | 2026-02-09 |
 | 12. Production Workflow | v1.1 | 2/2 | Complete | 2026-02-10 |
-| 13. Glossary Integration | v1.1 | 0/2 | Not started | - |
+| 13. Glossary Integration | v1.1 | 2/2 | Complete | 2026-02-10 |
 
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-02-10 after Phase 12 completion*
+*Last updated: 2026-02-10 after Phase 13 completion — v1.1 SHIPPED*
