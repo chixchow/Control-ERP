@@ -155,7 +155,7 @@ Employee management, time tracking, payroll, and commissions.
 
 ---
 
-## 7. Artwork & Proofing (17 tables)
+## 7. Artwork & Proofing (18 tables)
 
 Artwork/design workflow, proof management, and approval tracking.
 
@@ -242,7 +242,7 @@ Marketing campaigns, email tracking, and recurring activities.
 
 ---
 
-## 11. System & Config (30 tables)
+## 11. System & Config (31 tables)
 
 System settings, security, user preferences, reports, and administration.
 
@@ -334,7 +334,7 @@ Business rules and automation engine.
 
 ---
 
-## 16. Miscellaneous/Lookup (12 tables)
+## 16. Miscellaneous/Lookup (18 tables)
 
 Artwork enums, utility tables, and miscellaneous.
 
@@ -371,14 +371,14 @@ Artwork enums, utility tables, and miscellaneous.
 | Inventory & Parts | 13 | 1,232,544 |
 | Finance & GL | 11 | 8,229,773 |
 | Payroll & Time | 18 | 160,001 |
-| Artwork & Proofing | 17 | 932,067 |
+| Artwork & Proofing | 18 | 932,067 |
 | Production & Workflow | 10 | 532 |
 | Shipping | 8 | 177,359 |
 | Marketing & CRM | 5 | 92,978 |
-| System & Config | 30 | 92,504 |
+| System & Config | 31 | 92,504 |
 | Tax & Compliance | 7 | 1,662 |
 | Service | 3 | 3 |
 | Education/Training | 3 | 4 |
 | Rules & Automation | 3 | 464,098 |
-| Miscellaneous/Lookup | 12 | 82,399 |
+| Miscellaneous/Lookup | 18 | 82,399 |
 | **TOTAL** | **187** | **~16.5M** |

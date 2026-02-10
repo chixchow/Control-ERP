@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A natural language interface to the Control ERP system at FLS Banners ($3M revenue, scaling to $10-15M). Four validated Claude skills (core, sales, financial, glossary) translate plain English questions into accurate SQL queries against the StoreData SQL Server database. The system includes 187 fully-documented table schemas, a formalized wiki knowledge base (1,769 pages), and a 21-test validation suite proving 99.98% accuracy against known financials. Future milestones will expand the read-layer to all business domains and add write operations through CHAPI.
+A natural language interface to the Control ERP system at FLS Banners ($3M revenue, scaling to $10-15M). Eight validated Claude skills (core, sales, financial, customers, inventory, production, glossary + gap-log) translate plain English questions into accurate SQL queries against the StoreData SQL Server database. The system covers sales, financial analysis (AR/AP, P&L, cash flow), customer intelligence (profiles, RFM segmentation, churn detection), inventory management (stock levels, reorder monitoring, purchasing), and production workflow (artwork pipeline, station workload, dwell time analysis). It includes 187 fully-documented table schemas, a formalized wiki knowledge base (1,769 pages), a 21-test validation suite proving 99.98% accuracy, a 75-entry NL routing table with 100% accuracy on 25 test queries, and a Crystal Reports catalog mapping 36 reports to skill coverage. Future milestones will add write operations through CHAPI.
 
 ## Core Value
 
@@ -51,32 +51,33 @@ Any FLS team member can ask a business question in plain English and get an accu
 - ✓ **DOC-05**: Known gotchas (13 entries, $1.3M+ errors prevented) — v1.0
 - ✓ **DOC-06**: Validation methodology (6-step reproducible process) — v1.0
 
+**v1.1 — Read-Layer Build-Out (14 requirements):**
+- ✓ **FIN-04**: AR aging report matching Control's built-in report — v1.1
+- ✓ **FIN-05**: AP tracking and vendor payment queries — v1.1
+- ✓ **FIN-06**: P&L reporting with product-line breakdown — v1.1
+- ✓ **FIN-07**: Cash flow and bank balance queries — v1.1
+- ✓ **CUST-01**: Customer lookup, contact info, account status queries — v1.1
+- ✓ **CUST-02**: Customer segmentation and CLV analysis — v1.1
+- ✓ **CUST-03**: Churn detection (customers inactive > N days) — v1.1
+- ✓ **INV-01**: Parts and stock level queries — v1.1
+- ✓ **INV-02**: Reorder point monitoring and alerts — v1.1
+- ✓ **INV-03**: Warehouse and material planning queries — v1.1
+- ✓ **PROD-01**: Artwork status and approval pipeline queries — v1.1
+- ✓ **PROD-02**: Station workload and scheduling queries — v1.1
+- ✓ **PROD-03**: Station dwell time and process efficiency analysis — v1.1
+- ✓ **RPT-01**: Crystal Report catalog with skill coverage mapping — v1.1
+
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-**v1.1 — Read-Layer Build-Out (Milestone 2, 14 requirements):**
-- [ ] **FIN-04**: AR aging report matching Control's built-in report
-- [ ] **FIN-05**: AP tracking and vendor payment queries
-- [ ] **FIN-06**: P&L reporting with product-line breakdown
-- [ ] **FIN-07**: Cash flow and bank balance queries
-- [ ] **CUST-01**: Customer lookup, contact info, account status queries
-- [ ] **CUST-02**: Customer segmentation and CLV analysis
-- [ ] **CUST-03**: Churn detection (customers inactive > N days)
-- [ ] **INV-01**: Parts and stock level queries
-- [ ] **INV-02**: Reorder point monitoring and alerts
-- [ ] **INV-03**: Warehouse and material planning queries
-- [ ] **PROD-01**: Artwork status and approval pipeline queries
-- [ ] **PROD-02**: Station workload and scheduling queries
-- [ ] **PROD-03**: Time tracking and labor analysis from TimeCard tables
-- [ ] **RPT-01**: Crystal Report catalog — what exists, parameters, when to use vs. custom query
-
-**Future Read-Layer (deferred from Milestone 2):**
+**Future Read-Layer:**
 - [ ] **HR-01**: Employee, payroll, PTO queries (read-only)
 - [ ] **HR-02**: Timecard reporting and labor cost analysis
 - [ ] **ANLYT-01**: Sales forecasting based on historical patterns
 - [ ] **ANLYT-02**: Trend analysis and seasonal pattern detection
 - [ ] **DASH-01**: Interactive executive dashboard (React artifacts)
+- [ ] **DIV-01**: Banner Division vs Apparel Division breakdowns for all query types
 
 **Write-Layer Skills (Milestone 3):**
 - [ ] **WRITE-01**: Create customer accounts/contacts through CHAPI import stored procedures
@@ -97,7 +98,6 @@ Any FLS team member can ask a business question in plain English and get an accu
 - **Mobile app** — Web/CLI interface only. Mobile can come later.
 - **Direct SQL writes** — ALL writes go through CHAPI. No exceptions. Ever. This is a hard safety rule.
 - **Third-party integrations** — No Salesforce, QuickBooks, etc. Control is the system of record.
-- **Division-level reporting** — Apparel vs Banner division breakdowns are a future nice-to-have. This milestone covers company-wide queries.
 
 ## Context
 
@@ -107,7 +107,7 @@ Any FLS team member can ask a business question in plain English and get an accu
 
 **Technical Environment:**
 - Database: SQL Server accessed via MCP MSSQL tools
-- Skills: Claude Code skill files (SKILL.md + reference docs)
+- Skills: 8 Claude Code skill files across 6 domain directories
 - Write path: CHAPI HTTP API on port 12556 with SQLBridge stored procedures
 - Wiki knowledge: 1,769 pages crawled and extracted into 12 knowledge documents
 - Schema: 187 tables fully documented with relationships and domain classification
@@ -117,11 +117,14 @@ Any FLS team member can ask a business question in plain English and get an accu
 - Taylor, Gretel — business partners, stakeholders for validation gates
 - Gretel — manages Apparel Division
 
-**Current State (after v1.0):**
-- `control-erp-core` skill: Complete, validated to 99.98% against known 2025 financials
-- `control-erp-sales` skill: Complete with product variable architecture, validated against Control reports
-- `control-erp-financial` skill: Foundation complete — GL/Ledger architecture, system accounts, payment logic
-- `control-erp-glossary` skill: Complete — FLS terminology, Control terms, NL routing
+**Current State (after v1.1):**
+- `control-erp-core` skill: Foundation — TransactionType, StatusID, pricing rules, validated to 99.98%
+- `control-erp-sales` skill: Product variable architecture, validated against Control reports
+- `control-erp-financial` skill: Complete — GL/Ledger, AR/AP detail, P&L, cash flow (888 lines + 412 line reference)
+- `control-erp-customers` skill: Complete — profile lookup, RFM segmentation, churn detection (1,075 lines)
+- `control-erp-inventory` skill: Complete — stock levels, reorder monitoring, purchasing intelligence (663 lines)
+- `control-erp-production` skill: Complete — artwork pipeline, station workload, dwell time analysis (1,095 lines)
+- `control-erp-glossary` skill: Complete — 75 NL routing entries, Crystal Reports catalog, gap log (671 + 35 lines)
 - 187 table schemas in `output/schemas/`
 - Relationships mapped in `output/relationships.md`
 - Domains classified in `output/domains.md`
@@ -137,7 +140,6 @@ Any FLS team member can ask a business question in plain English and get an accu
 - **Write path**: MUST go through CHAPI stored procedures. No direct SQL writes. Data integrity depends on this.
 - **Validation gates**: Each phase must be validated against known Control report outputs before proceeding. No skill ships without proving accuracy.
 - **Wiki dependency**: Much domain knowledge comes from the Cyrious wiki crawl. If wiki information conflicts with actual database behavior, database wins.
-- **Timeline**: Wiki data compressed original 26-week estimate to ~6 weeks for read-layer completion. Write operations add additional time pending CHAPI accessibility testing.
 
 ## Key Decisions
 
@@ -148,15 +150,20 @@ Any FLS team member can ask a business question in plain English and get an accu
 | Use SaleDate not OrderCreatedDate for date filtering | SaleDate reflects when sale was finalized, not when order was created | ✓ Good — matches Control reports |
 | Never filter IsActive on TransDetailParam | Control sets IsActive=false after product config; data is still valid | ✓ Good — fixed $1.3M discrepancy |
 | All writes through CHAPI, never direct SQL | Data integrity, business rules, validation, audit trails managed by Control | — Pending (not yet implemented) |
-| Three-milestone structure | M1=Foundation+Sales, M2=Read-layer build-out, M3=Write operations | ✓ Good — M1 shipped on schedule |
+| Three-milestone structure | M1=Foundation+Sales, M2=Read-layer build-out, M3=Write operations | ✓ Good — M1+M2 shipped |
 | Wiki crawl before Phase 3+ development | Discovered CHAPI docs, GL mapping, ClassTypeIDs — eliminated research phases | ✓ Good — compressed timeline by ~6 weeks |
-| 8-phase structure with 4-wave parallelism | 3+2+2+1 wave structure maximized throughput with 5 concurrent agents | ✓ Good — 15 plans in 1.04 hours |
+| 8-phase structure with 4-wave parallelism (v1.0) | 3+2+2+1 wave structure maximized throughput with 5 concurrent agents | ✓ Good — 15 plans in 1.04 hours |
 | Cross-reference validation when MCP unavailable | Validated against 2026-02-07 live MCP results from Mac environment | ✓ Good — historical 2025 data is stable |
 | Glossary uses cross-reference pattern | Points to owning skills rather than duplicating query templates | ✓ Good — single source of truth maintained |
-
+| Extend financial skill (not create separate) | 80% of new content builds on existing queries | ✓ Good — clean extraction to references/ at 1,270 lines |
+| Fold reports catalog into glossary | 36 reports too thin for standalone skill; glossary is already a routing skill | ✓ Good — unified routing hub |
+| Two-tier confidence model for inventory | PO data reliable, inventory quantities caveated (Google Sheets migration) | ✓ Good — honest data quality communication |
+| GL NodeID 10414 for inventory valuation | Part-level sum is -$2.1M (meaningless); GL is authoritative ($651K) | ✓ Good — matches accountant expectations |
+| LEAD() window for production dwell time | FLS doesn't use TimeCard for per-job tracking; Journal transitions are the metric | ✓ Good — 1.06M station change records usable |
+| Route "top customers" to customers skill (not sales) | Comprehensive ranking with YoY, Pareto, segmentation | ✓ Good — clear domain boundaries |
 | Defer HR/Payroll to future milestone | Lower priority than finance/customer/ops, not actively queried | — Pending |
 | Defer analytics/dashboards to future milestone | Focus on query accuracy first, analytics is a nice-to-have | — Pending |
 | All domains held to same validation standard | Every skill must validate against Control reports, not just financial | ✓ Good — consistent with v1.0 approach |
 
 ---
-*Last updated: 2026-02-09 after v1.1 milestone start*
+*Last updated: 2026-02-10 after v1.1 milestone completion*

@@ -37,7 +37,7 @@ Macros are Control's primary automation tool for workflows, notifications, statu
 
 ---
 
-## RuleAction Types (10 Types)
+## RuleAction Types (11 Types)
 
 | ClassTypeID | Action Type | Description |
 |-------------|------------|-------------|

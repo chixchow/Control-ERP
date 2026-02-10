@@ -15,7 +15,7 @@ This skill enables complete production visibility for FLS Banners across three p
 
 ### Three Production Pillars
 
-**1. Artwork Pipeline (PROD-01):** Track artwork through the approval lifecycle -- from In Design through Pending Approval to Approved/Produced. Monitor stuck items (>7 days in status), revision rates (22% average), and turnaround times (54-hour average approval cycle). Artwork statuses are user-configurable via `_ArtworkStatus` lookup table; FLS actively uses 7 of 11 available statuses.
+**1. Artwork Pipeline (PROD-01):** Track artwork through the approval lifecycle -- from In Design through Pending Approval to Approved/Produced. Monitor stuck items (>3.5 days in status), revision rates (22% average), and turnaround times (54-hour average approval cycle). Artwork statuses are user-configurable via `_ArtworkStatus` lookup table; FLS actively uses 7 of 11 available statuses.
 
 **2. Station Workload (PROD-02):** Monitor WIP counts and dollar values at each production station. FLS uses a **dual order-level and line-item-level station model** with numbered stages (0-Design through 6-Shipping). Orders have a high-level StationID (order milestone), AND each line item has its own StationID (granular production routing). Queries must be context-aware to avoid double-counting.
 
@@ -210,7 +210,7 @@ ORDER BY ag.StatusDT ASC
 **Formatting guidance:**
 - Show oldest items first (longest wait at top)
 - If RevisionCount > 0, flag: "(revised [N] times)"
-- If DaysInStatus > 7, flag: "**OVERDUE** -- [N] days in status"
+- If DaysInStatus > 3.5, flag: "**OVERDUE** -- [N] days in status"
 - Include DueDate when available
 
 **Common @StatusID values:**
@@ -221,11 +221,11 @@ ORDER BY ag.StatusDT ASC
 
 ---
 
-### 4c. Stuck Artwork Detection (7-Day Threshold)
+### 4c. Stuck Artwork Detection (3.5-Day Threshold)
 
 **When to use:** User asks "what artwork is stuck", "which approvals are overdue", "artwork bottlenecks"
 
-Based on the 54-hour average turnaround, 3x = ~7 days as "stuck" threshold:
+Based on the 54-hour average turnaround, ~1.5x = 3.5 days as "stuck" threshold:
 
 ```sql
 SELECT
@@ -247,13 +247,13 @@ JOIN _ArtworkStatus s ON ag.StatusID = s.ID
 LEFT JOIN _ArtworkPriority pri ON ag.PriorityID = pri.ID
 WHERE ag.IsActive = 1
   AND ag.StatusID IN (1, 3, 10)  -- In Design, Pending Approval, Rejected
-  AND DATEDIFF(day, ag.StatusDT, GETDATE()) > 7
+  AND DATEDIFF(hour, ag.StatusDT, GETDATE()) > 84  -- 3.5 days
   AND th.TransactionType = 1
   AND th.StatusID IN (0, 1, 2)
 ORDER BY DATEDIFF(day, ag.StatusDT, GETDATE()) DESC
 ```
 
-**Note:** The 7-day threshold is 3x the 54-hour average turnaround. Claude may adjust the threshold if user requests (e.g., "stuck more than 3 days"). StatusID=4 (Approved) is excluded from stuck detection -- approved items are progressing normally toward production.
+**Note:** The 3.5-day threshold is ~1.5x the 54-hour average turnaround. Claude may adjust the threshold if user requests (e.g., "stuck more than 2 days"). StatusID=4 (Approved) is excluded from stuck detection -- approved items are progressing normally toward production.
 
 ---
 
@@ -413,7 +413,7 @@ When executing artwork pipeline queries:
 4. **Always filter date ranges:** For Journal-related queries (upcoming Plan 02), use 3-month rolling window
 5. **Never SELECT * from Station:** Specify columns explicitly to avoid geography column errors
 6. **Revision definition:** `ArtworkGroupStatusHistory WHERE FromStatusID=3 AND ToStatusID=1`
-7. **Stuck threshold:** 7 days = 3x average turnaround; adjustable per user request
+7. **Stuck threshold:** 3.5 days = ~1.5x average turnaround; adjustable per user request
 
 ---
 
@@ -842,7 +842,7 @@ ORDER BY DATEDIFF(hour, j_last.StartDateTime, GETDATE()) DESC
 **Formatting guidance:**
 - Show longest-sitting orders first
 - Flag items exceeding 1 business day (24 hours) as "**OVER GOAL**"
-- Flag items exceeding 7 days as "**CRITICAL**"
+- Flag items exceeding 3.5 days as "**CRITICAL**"
 - Include DueDate context: if DueDate is past, flag as "**PAST DUE**"
 
 **Example output:**

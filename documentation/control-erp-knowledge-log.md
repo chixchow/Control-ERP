@@ -733,13 +733,13 @@ Invoice | Description | SaleDate | DueDate | Age | DaysLate | OrderedBy | OrderT
 | 34 | Cost of Built - FGI | 1002 | $0.00 | Finished goods intermediate |
 | 35 | Warehouse Transfer | 1002 | $0.00 | |
 | 89 | Customer Credit Transfer | 1002 | $0.00 | |
-| 90 | Cash-Checking | 1000 | $99,167.87 | Primary bank account |
+| 90 | Cash-Associated Bank-Checking | 1000 | $99,167.87 | Primary bank account |
 | 91 | Undeposited Cash | 1007 | -$13.09 | |
 | 92 | Undeposited MCVisa | 1007 | $0.00 | MC/Visa payments pending deposit |
 | 93 | Undeposited Checks | 1007 | $447.02 | |
 | 543 | Undeposited Discover | 1007 | $0.00 | |
 | 10137 | Undeposited Amex | 1007 | $0.00 | |
-| 10412 | Cash-MM (Money Market) | 1000 | $646,849.82 | |
+| 10412 | Cash-Associated Bank-MM | 1000 | $646,849.82 | |
 | 10414 | Inventory | 1003 | $135,094.00 | Main inventory account |
 
 **GLClassificationType Reference (balance sheet):**
