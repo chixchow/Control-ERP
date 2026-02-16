@@ -50,9 +50,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-09
-Stopped at: v1.2 milestone initialization
-Resume file: None
+Last session: 2026-02-16
+Stopped at: Added closeout-based income statement query to sales and core skills
+Resume file: .planning/handoff/2026-02-16-closeout-dates-handoff.md
 
 **v1.0 Status:** SHIPPED (8 phases, 15 plans, 35/35 requirements)
 **v1.1 Status:** SHIPPED (5 phases, 10 plans, 14/14 requirements)

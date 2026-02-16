@@ -161,6 +161,59 @@ AND th.SaleDate IS NOT NULL
 AND YEAR(th.EstimateCreatedDate) = @Year
 ```
 
+### Closeout / Period Boundaries (Income Statement Date Ranges)
+
+**⚠️ CRITICAL: FLS Banners' Income Statement report uses Closeout timestamps as date boundaries — NOT calendar dates or SaleDate on TransHeader.** When the user asks about income statement figures, monthly P&L, or any report that should match the printed income statement, you MUST use Closeout-based date boundaries on the Ledger table.
+
+**Closeout Table Structure:**
+
+| Column | Description |
+|--------|-------------|
+| `CloseoutType` | 1=Daily, 2=Monthly, 3=Yearly, 5=Export, 6=CC Settlement |
+| `ModifiedDate` | When the closeout ran — **this is the period boundary timestamp** |
+| `CloseOutPeriod` | Incrementing period number (unique per CloseoutType) |
+| `IsActive` | Standard active flag |
+
+**Timing patterns:**
+- **Daily closeouts (Type 1):** Run ~8 PM Mon-Fri
+- **Monthly closeouts (Type 2):** Run ~10:30 PM on the last day of each month (exact time varies +/- 2 minutes depending on data volume)
+- **Yearly closeouts (Type 3):** Run at year-end
+
+**How to get period boundaries for a given month:**
+```sql
+-- Get the two monthly closeout timestamps that bracket a target month
+-- Prior month closeout = start boundary (exclusive)
+-- Target month closeout = end boundary (inclusive)
+
+-- Example: For January 2026 income statement
+DECLARE @Year INT = 2026, @Month INT = 1
+
+-- Prior month's closeout (December = start boundary)
+SELECT TOP 1 ModifiedDate
+FROM Closeout
+WHERE CloseoutType = 2  -- Monthly
+  AND IsActive = 1
+  AND MONTH(ModifiedDate) = CASE WHEN @Month = 1 THEN 12 ELSE @Month - 1 END
+  AND YEAR(ModifiedDate) = CASE WHEN @Month = 1 THEN @Year - 1 ELSE @Year END
+ORDER BY ModifiedDate DESC
+
+-- Target month's closeout (January = end boundary)
+SELECT TOP 1 ModifiedDate
+FROM Closeout
+WHERE CloseoutType = 2  -- Monthly
+  AND IsActive = 1
+  AND MONTH(ModifiedDate) = @Month
+  AND YEAR(ModifiedDate) = @Year
+ORDER BY ModifiedDate DESC
+```
+
+**Relationship to Ledger:** Use `Ledger.EntryDateTime > @PriorCloseout AND Ledger.EntryDateTime <= @TargetCloseout` to match the income statement period exactly. This captures all GL entries posted between closeout runs.
+
+**When to use Closeout boundaries vs SaleDate:**
+- **Income statement / P&L / GL-based reports** → Closeout boundaries on Ledger.EntryDateTime
+- **Ad-hoc sales queries / order counts / product breakdowns** → SaleDate on TransHeader
+- **If the user says "match the income statement"** → Always use Closeout boundaries
+
 ---
 
 ## Schema Quick Reference
